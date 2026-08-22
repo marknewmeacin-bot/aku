@@ -11,7 +11,7 @@ const CartSheetItems = ({ product }: { product: any }) => {
   const cart = useCartStore((state: any) => state.cart.cartItems);
 
   const updateQty = (type: string) => {
-    let newCart = cart.map((p: any) => {
+    const newCart = cart.map((p: any) => {
       if (p._uid == product._uid) {
         return {
           ...p,
@@ -24,7 +24,7 @@ const CartSheetItems = ({ product }: { product: any }) => {
     toast.success("Cart updated successfully");
   };
   const removeProduct = (id: string) => {
-    let newCart = cart.filter((p: any) => {
+    const  newCart = cart.filter((p: any) => {
       return p._uid != id;
     });
     updateCart(newCart);

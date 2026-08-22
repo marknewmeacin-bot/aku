@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
 import { connectToDatabase } from "../connect";
 import Cart from "../models/cart.model";
 import Coupon from "../models/coupon.model";
@@ -8,32 +9,39 @@ import Order from "../models/order.model";
 import User from "../models/user.model";
 import { handleError } from "@/lib/utils";
 
-// create user
-export async function createUser(user: any) {
+type UserData = Record<string, unknown>;
+
+// Create user
+export async function createUser(user: UserData) {
   try {
     await connectToDatabase();
+
     const newUser = await User.create(user);
+
     return JSON.parse(JSON.stringify(newUser));
   } catch (error) {
     handleError(error);
   }
 }
 
-// get user by id
+// Get user by Clerk ID
 export async function getUserById(clerkId: string) {
   try {
     await connectToDatabase();
+
     const user = await User.findOne({ clerkId });
+
     if (!user) {
       return {
-        message: "User not found with this ID!",
         success: false,
+        message: "User not found with this ID!",
         user: null,
       };
     }
+
     return {
-      message: "Successfully fetched User data.",
       success: true,
+      message: "Successfully fetched User data.",
       user: JSON.parse(JSON.stringify(user)),
     };
   } catch (error) {
@@ -41,180 +49,286 @@ export async function getUserById(clerkId: string) {
   }
 }
 
-// update user
-export async function updateUser(clerkId: string, user: any) {
+// Update user
+export async function updateUser(
+  clerkId: string,
+  userData: UserData
+) {
   try {
     await connectToDatabase();
-    const updatedUser = await User.findOneAndUpdate({ clerkId }, user, {
-      new: true,
-    });
+
+    const updatedUser = await User.findOneAndUpdate(
+      { clerkId },
+      userData,
+      { new: true }
+    );
+
     if (!updatedUser) {
       return {
-        message: "User not found with this ID!",
         success: false,
+        message: "User not found with this ID!",
         user: null,
       };
     }
+
     return JSON.parse(JSON.stringify(updatedUser));
   } catch (error) {
     handleError(error);
   }
 }
 
-// delete user
+// Delete user
 export async function deleteUser(clerkId: string) {
   try {
     await connectToDatabase();
-    const usertoDelete = await User.findOne({ clerkId });
-    if (!usertoDelete) {
+
+    const userToDelete = await User.findOne({ clerkId });
+
+    if (!userToDelete) {
       return {
-        message: "User not found with this ID!",
         success: false,
+        message: "User not found with this ID!",
         user: null,
       };
     }
-    const deletedUser = await User.findByIdAndDelete(usertoDelete._id);
+
+    const deletedUser = await User.findByIdAndDelete(
+      userToDelete._id
+    );
+
     revalidatePath("/");
-    return deletedUser
-      ? {
-          success: true,
-          message: "Successfully deleted User",
-          user: JSON.parse(JSON.stringify(deletedUser)),
-        }
-      : {
-          success: false,
-          message: "Something went wrong",
-          user: null,
-        };
-  } catch (error) {
-    handleError(error);
-  }
-}
 
-// Address operations of user:
-export async function changeActiveAddress(id: any, user_id: any) {
-  try {
-    await connectToDatabase();
-    const user = await User.findById(user_id);
-    let user_addresses = user.address;
-    let addresses = [];
-
-    for (let i = 0; i < user_addresses.length; i++) {
-      let temp_address = {};
-      if (user_addresses[i]._id == id) {
-        temp_address = { ...user_addresses[i].toObject(), active: true };
-        addresses.push(temp_address);
-      } else {
-        temp_address = { ...user_addresses[i].toObject(), active: false };
-        addresses.push(temp_address);
-      }
+    if (!deletedUser) {
+      return {
+        success: false,
+        message: "Something went wrong",
+        user: null,
+      };
     }
-    await user.updateOne(
-      {
-        address: addresses,
-      },
-      { new: true }
-    );
-    return JSON.parse(JSON.stringify({ addresses }));
+
+    return {
+      success: true,
+      message: "Successfully deleted User",
+      user: JSON.parse(JSON.stringify(deletedUser)),
+    };
   } catch (error) {
     handleError(error);
   }
 }
-export async function deleteAddress(id: any, user_id: any) {
+
+// Change active address
+export async function changeActiveAddress(
+  id: string,
+  userId: string
+) {
   try {
     await connectToDatabase();
-    const user = await User.findById(user_id);
-    await user.updateOne(
-      {
-        $pull: {
-          address: { _id: id },
-        },
-      },
-      { new: true }
-    );
-    return JSON.parse(
-      JSON.stringify({
-        addresses: user.address.filter((a: any) => a._id != id),
-      })
-    );
-  } catch (error) {
-    handleError(error);
-  }
-}
-export async function saveAddress(address: any, user_id: any) {
-  try {
-    // Find the user by user_id
-    const user = await User.findById(user_id);
+
+    const user = await User.findById(userId);
 
     if (!user) {
-      return "User not found";
+      return {
+        success: false,
+        message: "User not found",
+        addresses: [],
+      };
     }
 
-    // Check if 'address' property exists and is an array, if not, create it
-    if (!user.address || !Array.isArray(user.address)) {
+    const addresses = (user.address ?? []).map(
+      (address: any) => {
+        const addressData = address.toObject();
+
+        return {
+          ...addressData,
+          active: address._id.toString() === id,
+        };
+      }
+    );
+
+    user.address = addresses;
+
+    await user.save();
+
+    return {
+      success: true,
+      addresses: JSON.parse(JSON.stringify(addresses)),
+    };
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+// Delete address
+export async function deleteAddress(
+  id: string,
+  userId: string
+) {
+  try {
+    await connectToDatabase();
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return {
+        success: false,
+        message: "User not found",
+        addresses: [],
+      };
+    }
+
+    user.address = (user.address ?? []).filter(
+      (address: any) => address._id.toString() !== id
+    );
+
+    await user.save();
+
+    return {
+      success: true,
+      addresses: JSON.parse(
+        JSON.stringify(user.address)
+      ),
+    };
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+// Save address
+export async function saveAddress(
+  address: Record<string, unknown>,
+  userId: string
+) {
+  try {
+    await connectToDatabase();
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return {
+        success: false,
+        message: "User not found",
+        addresses: [],
+      };
+    }
+
+    if (!Array.isArray(user.address)) {
       user.address = [];
     }
 
-    // Use the push method to add the address to the 'address' array
-    Object.assign(user.address, address);
+    user.address.push(address);
 
-    // Save the updated user
     await user.save();
-    return JSON.parse(JSON.stringify({ addresses: user.address }));
+
+    return {
+      success: true,
+      addresses: JSON.parse(
+        JSON.stringify(user.address)
+      ),
+    };
   } catch (error) {
     handleError(error);
   }
 }
 
-// Coupon operations of user:
-export async function applyCoupon(coupon: any, user_id: any) {
+// Apply coupon
+export async function applyCoupon(
+  coupon: string,
+  userId: string
+) {
   try {
     await connectToDatabase();
-    const user = await User.findById(user_id);
-    const checkCoupon = await Coupon.findOne({ coupon });
+
+    const user = await User.findById(userId);
+
     if (!user) {
-      return { message: "User not found", success: false };
+      return {
+        success: false,
+        message: "User not found",
+      };
     }
-    if (checkCoupon == null) {
-      return { message: "Invalid Coupon", success: false };
+
+    const checkCoupon = await Coupon.findOne({ coupon });
+
+    if (!checkCoupon) {
+      return {
+        success: false,
+        message: "Invalid Coupon",
+      };
     }
-    const { cartTotal } = await Cart.findOne({ user: user_id });
-    let totalAfterDiscount =
-      cartTotal - (cartTotal * checkCoupon.discount) / 100;
-    await Cart.findByIdAndUpdate(user._id, { totalAfterDiscount });
-    return JSON.parse(
-      JSON.stringify({
-        totalAfterDiscount: totalAfterDiscount.toFixed(2),
-        discount: checkCoupon.discount,
-        message: "Successfully fetched Coupon",
-        success: true,
-      })
+
+    const cart = await Cart.findOne({ user: userId });
+
+    if (!cart) {
+      return {
+        success: false,
+        message: "Cart not found",
+      };
+    }
+
+    const totalAfterDiscount =
+      cart.cartTotal -
+      (cart.cartTotal * checkCoupon.discount) / 100;
+
+    await Cart.findOneAndUpdate(
+      { user: userId },
+      { totalAfterDiscount },
+      { new: true }
     );
-  } catch (error) {}
+
+    return {
+      success: true,
+      message: "Successfully applied Coupon",
+      totalAfterDiscount: totalAfterDiscount.toFixed(2),
+      discount: checkCoupon.discount,
+    };
+  } catch (error) {
+    handleError(error);
+  }
 }
 
-// get all orders of user for their profile:
-export async function getAllUserOrdersProfile(clerkId: string) {
+// Get all orders for user profile
+export async function getAllUserOrdersProfile(
+  clerkId: string
+) {
   try {
     await connectToDatabase();
-    let user = await User.findOne({ clerkId });
 
-    let orders = [];
-    orders = await Order.find({ user: user._id })
+    const user = await User.findOne({ clerkId });
+
+    if (!user) {
+      return {
+        success: false,
+        message: "User not found",
+        orders: [],
+      };
+    }
+
+    const orders = await Order.find({
+      user: user._id,
+    })
       .sort({ createdAt: -1 })
       .lean();
+
     const filteredOrders = orders.map((order) => ({
       id: order._id,
-      date: new Date(order.createdAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
+      date: new Date(order.createdAt).toLocaleDateString(
+        "en-US",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }
+      ),
       total: order.total,
     }));
 
-    return JSON.parse(JSON.stringify(filteredOrders));
+    return {
+      success: true,
+      orders: JSON.parse(
+        JSON.stringify(filteredOrders)
+      ),
+    };
   } catch (error) {
-    console.log(error);
+    handleError(error);
   }
 }

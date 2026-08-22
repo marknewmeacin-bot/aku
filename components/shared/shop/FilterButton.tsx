@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 const categories = [
   { name: "Bath & Body", count: 45 },
   { name: "Candles", count: 1 },
@@ -38,59 +41,74 @@ const availabilityOptions = [
   { name: "In stock", count: 148 },
   { name: "Out of stock", count: 9 },
 ];
-const FilterButton = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [priceRange, setPriceRange] = useState([0, 2249]);
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-  const FilterContent = () => (
-    <div className="p-4 bg-white shadow-lg rounded-lg w-full">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Price Filter */}
+
+interface FilterContentProps {
+  priceRange: number[];
+  setPriceRange: React.Dispatch<React.SetStateAction<number[]>>;
+  onClose: () => void;
+}
+
+const FilterContent = ({
+  priceRange,
+  setPriceRange,
+  onClose,
+}: FilterContentProps) => {
+  const resetPrice = () => {
+    setPriceRange([0, 2249]);
+  };
+
+  return (
+    <div className="w-full rounded-lg bg-white p-4 shadow-lg">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+        {/* Price */}
         <div>
-          <h3 className="font-semibold mb-2">Price</h3>
+          <h3 className="mb-2 font-semibold">Price</h3>
+
           <Button
+            type="button"
             variant="ghost"
-            className="mb-2 p-0 h-auto text-sm font-normal hover:bg-transparent"
+            onClick={resetPrice}
+            className="mb-2 h-auto p-0 text-sm font-normal hover:bg-transparent"
           >
             Reset
           </Button>
+
           <Slider
-            defaultValue={[0, 2249]}
             max={2249}
+            min={0}
             step={1}
             value={priceRange}
             onValueChange={setPriceRange}
             className="mb-2"
           />
+
           <p className="text-sm">
             Price: ₹{priceRange[0]} - ₹{priceRange[1]}
           </p>
         </div>
 
-        {/* Category Filter */}
+        {/* Category */}
         <div>
-          <h3 className="font-semibold mb-2">Category</h3>
+          <h3 className="mb-2 font-semibold">Category</h3>
+
           <Button
+            type="button"
             variant="ghost"
-            className="mb-2 p-0 h-auto text-sm font-normal hover:bg-transparent"
+            className="mb-2 h-auto p-0 text-sm font-normal hover:bg-transparent"
           >
             Reset
           </Button>
+
           {categories.map((category) => (
             <div
               key={category.name}
-              className="flex items-center space-x-2 mb-2"
+              className="mb-2 flex items-center space-x-2"
             >
               <Checkbox id={`category-${category.name}`} />
+
               <label
                 htmlFor={`category-${category.name}`}
-                className="text-sm cursor-pointer"
+                className="cursor-pointer text-sm"
               >
                 {category.name} ({category.count})
               </label>
@@ -98,21 +116,28 @@ const FilterButton = () => {
           ))}
         </div>
 
-        {/* Product Type Filter */}
+        {/* Product Type */}
         <div>
-          <h3 className="font-semibold mb-2">Product type</h3>
+          <h3 className="mb-2 font-semibold">Product Type</h3>
+
           <Button
+            type="button"
             variant="ghost"
-            className="mb-2 p-0 h-auto text-sm font-normal hover:bg-transparent"
+            className="mb-2 h-auto p-0 text-sm font-normal hover:bg-transparent"
           >
             Reset
           </Button>
+
           {productTypes.map((type) => (
-            <div key={type.name} className="flex items-center space-x-2 mb-2">
+            <div
+              key={type.name}
+              className="mb-2 flex items-center space-x-2"
+            >
               <Checkbox id={`type-${type.name}`} />
+
               <label
                 htmlFor={`type-${type.name}`}
-                className="text-sm cursor-pointer"
+                className="cursor-pointer text-sm"
               >
                 {type.name} ({type.count})
               </label>
@@ -120,21 +145,28 @@ const FilterButton = () => {
           ))}
         </div>
 
-        {/* Availability Filter */}
+        {/* Availability */}
         <div>
-          <h3 className="font-semibold mb-2">Availability</h3>
+          <h3 className="mb-2 font-semibold">Availability</h3>
+
           <Button
+            type="button"
             variant="ghost"
-            className="mb-2 p-0 h-auto text-sm font-normal hover:bg-transparent"
+            className="mb-2 h-auto p-0 text-sm font-normal hover:bg-transparent"
           >
             Reset
           </Button>
+
           {availabilityOptions.map((option) => (
-            <div key={option.name} className="flex items-center space-x-2 mb-2">
+            <div
+              key={option.name}
+              className="mb-2 flex items-center space-x-2"
+            >
               <Checkbox id={`availability-${option.name}`} />
+
               <label
                 htmlFor={`availability-${option.name}`}
-                className="text-sm cursor-pointer"
+                className="cursor-pointer text-sm"
               >
                 {option.name} ({option.count})
               </label>
@@ -143,57 +175,96 @@ const FilterButton = () => {
         </div>
       </div>
 
-      {/* Apply & Clear buttons */}
-      <div className="flex justify-between mt-6">
+      {/* Actions */}
+      <div className="mt-6 flex justify-between">
         <Button
+          type="button"
           className="bg-black text-white hover:bg-gray-800"
-          onClick={() => setIsOpen(false)}
+          onClick={onClose}
         >
           APPLY
         </Button>
-        <Button variant="outline" onClick={() => setIsOpen(false)}>
-          Clear
+
+        <Button type="button" variant="outline" onClick={onClose}>
+          CLEAR
         </Button>
       </div>
     </div>
   );
+};
+
+const FilterButton = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [priceRange, setPriceRange] = useState<number[]>([0, 2249]);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+
+    window.addEventListener("resize", checkMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []);
+
   return (
     <div className="relative w-full">
       {isMobile ? (
-        // Mobile: Use Sheet for the modal behavior
         <Sheet>
           <SheetTrigger asChild>
-            <Button className="bg-black text-white px-4 py-2 flex items-center">
-              FILTER <span className="ml-2">+</span>
+            <Button className="flex items-center bg-black px-4 py-2 text-white">
+              FILTER
+              <span className="ml-2">+</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-full overflow-y-auto">
+
+          <SheetContent
+            side="bottom"
+            className="h-full overflow-y-auto"
+          >
             <SheetHeader>
               <SheetTitle>Filters</SheetTitle>
             </SheetHeader>
-            <FilterContent />
+
+            <FilterContent
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
+              onClose={() => {}}
+            />
           </SheetContent>
         </Sheet>
       ) : (
-        // Desktop: Use Dialog for modal-like behavior
         <>
           <Button
-            className="bg-black text-white px-4 py-2 flex items-center"
-            onClick={() => setIsOpen(!isOpen)}
+            type="button"
+            className="flex items-center bg-black px-4 py-2 text-white"
+            onClick={() => setIsOpen((prev) => !prev)}
           >
-            FILTER{" "}
+            FILTER
+
             {isOpen ? (
               <ChevronUp className="ml-2 h-4 w-4" />
             ) : (
               <ChevronDown className="ml-2 h-4 w-4" />
             )}
           </Button>
+
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="max-w-[80vw]">
               <DialogHeader>
                 <DialogTitle>Filters</DialogTitle>
               </DialogHeader>
-              <FilterContent />
+
+              <FilterContent
+                priceRange={priceRange}
+                setPriceRange={setPriceRange}
+                onClose={() => setIsOpen(false)}
+              />
             </DialogContent>
           </Dialog>
         </>

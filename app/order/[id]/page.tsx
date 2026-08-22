@@ -8,7 +8,7 @@ import { ObjectId } from "mongodb";
 import { Metadata } from "next";
 import IdInvalidError from "@/components/shared/IdInvalidError";
 export const metadata: Metadata = {
-  title: "Order Page | VibeCart",
+  title: "Order Page | Aku",
   description: "View All of your Order Details.",
 };
 

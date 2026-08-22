@@ -1,104 +1,220 @@
 "use server";
 
 import { handleError } from "@/lib/utils";
+
 import { connectToDatabase } from "../connect";
+import Cart from "../models/cart.model";
 import Product from "../models/product.model";
 import User from "../models/user.model";
-import Cart from "../models/cart.model";
 
-// Cart operations for user:
-export async function saveCartForUser(cart: any, clerkId: string) {
+interface CartItem {
+  _id: string;
+  style: number;
+  size: string;
+  qty: number;
+  color: {
+    color: string;
+    image: string;
+  };
+  vendor?: {
+    _id?: string;
+    [key: string]: unknown;
+  };
+}
+
+interface SavedCartProduct {
+  name: string;
+  product: unknown;
+  color: {
+    color: string;
+    image: string;
+  };
+  image: string;
+  qty: number;
+  size: string;
+  vendor: Record<string, unknown>;
+  vendorId: string;
+  price: number;
+}
+
+export async function saveCartForUser(
+  cart: CartItem[],
+  clerkId: string
+) {
   try {
     await connectToDatabase();
-    let products = [];
-    let user = await User.findOne({ clerkId });
+
+    const user = await User.findOne({ clerkId });
+
+    if (!user) {
+      return {
+        success: false,
+        message: "User not found.",
+      };
+    }
+
     await Cart.deleteOne({ user: user._id });
 
-    for (let i = 0; i < cart.length; i++) {
-      let dbProduct: any = await Product.findById(cart[i]._id).lean();
-      let subProduct = dbProduct.subProducts[cart[i].style];
-      let tempProduct: any = {};
-      tempProduct.name = dbProduct.name;
-      tempProduct.product = dbProduct._id;
-      tempProduct.color = {
-        color: cart[i].color.color,
-        image: cart[i].color.image,
-      };
-      tempProduct.image = subProduct.images[0].url;
-      tempProduct.qty = Number(cart[i].qty);
-      tempProduct.size = cart[i].size;
-      tempProduct.vendor = cart[i].vendor ? cart[i].vendor : {};
-      tempProduct.vendorId =
-        cart[i].vendor && cart[i].vendor._id ? cart[i].vendor._id : "";
+    const products: SavedCartProduct[] = [];
 
-      let price = Number(
-        subProduct.sizes.find((p: any) => p.size == cart[i].size).price
+    for (const cartItem of cart) {
+      const dbProduct = await Product.findById(cartItem._id).lean();
+
+      if (!dbProduct) {
+        continue;
+      }
+
+      const subProduct = dbProduct.subProducts[cartItem.style];
+
+      if (!subProduct) {
+        continue;
+      }
+
+      const selectedSize = subProduct.sizes.find(
+        (item: { size: string; price: number }) =>
+          item.size === cartItem.size
       );
-      tempProduct.price =
-        subProduct.discount > 0
-          ? (price - (price * Number(subProduct.discount)) / 100).toFixed(2)
-          : price.toFixed(2);
-      products.push(tempProduct);
+
+      if (!selectedSize) {
+        continue;
+      }
+
+      const originalPrice = Number(selectedSize.price);
+      const discount = Number(subProduct.discount) || 0;
+
+      const finalPrice =
+        discount > 0
+          ? originalPrice - (originalPrice * discount) / 100
+          : originalPrice;
+
+      const product: SavedCartProduct = {
+        name: dbProduct.name,
+        product: dbProduct._id,
+        color: {
+          color: cartItem.color.color,
+          image: cartItem.color.image,
+        },
+        image: subProduct.images[0]?.url ?? "",
+        qty: Number(cartItem.qty),
+        size: cartItem.size,
+        vendor: cartItem.vendor ?? {},
+        vendorId: cartItem.vendor?._id ?? "",
+        price: Number(finalPrice.toFixed(2)),
+      };
+
+      products.push(product);
     }
-    let cartTotal = 0;
-    for (let i = 0; i < products.length; i++) {
-      cartTotal = cartTotal + products[i].price * products[i].qty;
-    }
-    await new Cart({
+
+    const cartTotal = products.reduce(
+      (total, product) => total + product.price * product.qty,
+      0
+    );
+
+    await Cart.create({
       products,
-      cartTotal: cartTotal.toFixed(2),
+      cartTotal: Number(cartTotal.toFixed(2)),
       user: user._id,
-    }).save();
-    return { success: true };
-  } catch (error) {
-    handleError(error);
-  }
-}
-export async function getSavedCartForUser(clerkId: string) {
-  try {
-    await connectToDatabase();
-    const user = await User.findOne({ clerkId });
-    const cart = await Cart.findOne({ user: user._id });
+    });
+
     return {
-      user: JSON.parse(JSON.stringify(user)),
-      cart: JSON.parse(JSON.stringify(cart)),
-      address: JSON.parse(JSON.stringify(user.address)),
+      success: true,
+      message: "Cart saved successfully.",
     };
   } catch (error) {
     handleError(error);
   }
 }
 
-// update cart for user
-export async function updateCartForUser(products: any) {
+export async function getSavedCartForUser(clerkId: string) {
   try {
     await connectToDatabase();
-    const promises = products.map(async (p: any) => {
-      let dbProduct: any = await Product.findById(p._id).lean();
-      let originalPrice = dbProduct.subProducts[p.style].sizes.find(
-        (x: any) => x.size == p.size
-      ).price;
-      let quantity = dbProduct.subProducts[p.style].sizes.find(
-        (x: any) => x.size == p.size
-      ).qty;
-      let discount = dbProduct.subProducts[p.style].discount;
+
+    const user = await User.findOne({ clerkId });
+
+    if (!user) {
       return {
-        ...p,
-        priceBefore: originalPrice,
-        price:
-          discount > 0
-            ? originalPrice - originalPrice / discount
-            : originalPrice,
-        discount,
-        quantity,
-        shippingFee: dbProduct.shipping,
+        success: false,
+        message: "User not found.",
+        user: null,
+        cart: null,
+        address: [],
       };
-    });
-    const data = await Promise.all(promises);
+    }
+
+    const cart = await Cart.findOne({
+      user: user._id,
+    }).lean();
+
     return {
       success: true,
-      message: "successfully updated the cart.",
-      data: JSON.parse(JSON.stringify(data)),
+      user: JSON.parse(JSON.stringify(user)),
+      cart: JSON.parse(JSON.stringify(cart)),
+      address: JSON.parse(JSON.stringify(user.address ?? [])),
+    };
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+interface UpdateCartItem extends CartItem {
+  priceBefore?: number;
+  price?: number;
+  discount?: number;
+  quantity?: number;
+  shippingFee?: number;
+}
+
+export async function updateCartForUser(products: CartItem[]) {
+  try {
+    await connectToDatabase();
+
+    const updatedProducts = await Promise.all(
+      products.map(async (product): Promise<UpdateCartItem> => {
+        const dbProduct = await Product.findById(product._id).lean();
+
+        if (!dbProduct) {
+          return product;
+        }
+
+        const subProduct = dbProduct.subProducts[product.style];
+
+        if (!subProduct) {
+          return product;
+        }
+
+        const selectedSize = subProduct.sizes.find(
+          (item: { size: string; price: number; qty: number }) =>
+            item.size === product.size
+        );
+
+        if (!selectedSize) {
+          return product;
+        }
+
+        const originalPrice = Number(selectedSize.price);
+        const quantity = Number(selectedSize.qty);
+        const discount = Number(subProduct.discount) || 0;
+
+        const finalPrice =
+          discount > 0
+            ? originalPrice - (originalPrice * discount) / 100
+            : originalPrice;
+
+        return {
+          ...product,
+          priceBefore: originalPrice,
+          price: Number(finalPrice.toFixed(2)),
+          discount,
+          quantity,
+          shippingFee: Number(dbProduct.shipping) || 0,
+        };
+      })
+    );
+
+    return {
+      success: true,
+      message: "Successfully updated the cart.",
+      data: JSON.parse(JSON.stringify(updatedProducts)),
     };
   } catch (error) {
     handleError(error);

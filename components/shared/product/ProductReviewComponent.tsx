@@ -2,6 +2,11 @@
 
 import { ChevronDown, Star } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
+import { useForm } from "@mantine/form";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -11,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 import {
   Select,
   SelectContent,
@@ -20,242 +26,332 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useForm } from "@mantine/form";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useClerk } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+
 import { handleError } from "@/lib/utils";
 import { createProductReview } from "@/lib/database/actions/product.actions";
-import { toast } from "sonner";
-import { revalidatePath } from "next/cache";
-import Link from "next/link";
+
+interface ProductReviewComponentProps {
+  product: any;
+  rating: number;
+  numofReviews: number;
+  ratings: any;
+}
 
 const ProductReviewComponent = ({
   product,
   rating,
   numofReviews,
-  ratings,
-}: {
-  product: any;
-  rating: number;
-  numofReviews: number;
-  ratings: any;
-}) => {
-  const numOfReviews = product.numReviews;
+}: ProductReviewComponentProps) => {
   const { user } = useClerk();
-  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
-  const [reviews, setReviews] = useState(product.reviews);
+
+  const [loading, setLoading] = useState(false);
+  const [reviews, setReviews] = useState(product.reviews || []);
   const [sortBy, setSortBy] = useState("Most Recent");
+
   const form = useForm({
     initialValues: {
       rating: "",
       review: "",
     },
+
     validate: {
-      rating: (value) => (value ? null : "Rating is required."),
+      rating: (value) =>
+        value ? null : "Rating is required.",
+
       review: (value) =>
-        value.trim().length > 0 ? null : "Review cannot be empty.",
+        value.trim().length > 0
+          ? null
+          : "Review cannot be empty.",
     },
   });
+
   const reviewData = {
     averageRating: rating,
-    totalReviews: numOfReviews,
-    ratingBreakDown: product.ratingBreakdown,
+    totalReviews: numofReviews,
+    ratingBreakDown: product.ratingBreakdown || [],
   };
+
   const handleSubmit = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
-      if (!user) return;
-      await createProductReview(
+
+      const response = await createProductReview(
         Number(form.values.rating),
         form.values.review,
-        user?.id,
+        user.id,
         product._id
-      )
-        .then((res) => {
-          setReviews(res.reviews);
-          form.setValues({ rating: "", review: "" });
-          toast.success("Successfully added product review");
-        })
-        .catch((err) => alert(err))
-        .finally(() => {
-          setLoading(false);
-        });
+      );
+
+      if (response?.reviews) {
+        setReviews(response.reviews);
+      }
+
+      form.reset();
+
+      toast.success("Successfully added product review");
     } catch (error) {
       handleError(error);
+      toast.error("Failed to add product review");
+    } finally {
+      setLoading(false);
     }
   };
+
   return (
-    <div className="ownContainer p-4 mt-[20px]">
+    <div className="ownContainer mt-[20px] p-4">
       <h2 className="heading">Customer Reviews</h2>
-      <div className="flex flex-col md:flex-row gap-8">
+
+      <div className="flex flex-col gap-8 md:flex-row">
+        {/* Review Summary */}
         <div className="md:w-1/3">
-          <div className="flex items-center mb-2">
+          <div className="mb-2 flex items-center">
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
-                className={`w-6 h-6 ${
+                className={`h-6 w-6 ${
                   star <= Math.round(reviewData.averageRating)
-                    ? "text-yellow-400 fill-yellow-400"
+                    ? "fill-yellow-400 text-yellow-400"
                     : "text-gray-300"
                 }`}
               />
             ))}
+
             <span className="ml-2 text-xl font-semibold">
               {reviewData.averageRating.toFixed(1)}
             </span>
           </div>
-          <p className="text-sm text-gray-600 mb-4">
+
+          <p className="mb-4 text-sm text-gray-600">
             Based on {reviewData.totalReviews} reviews
           </p>
-          {reviewData.ratingBreakDown.map((rating: any) => (
-            <div key={rating.stars} className="flex items-center mb-2">
-              <div className="flex items-center w-24">
+
+          {reviewData.ratingBreakDown.map((item: any) => (
+            <div
+              key={item.stars}
+              className="mb-2 flex items-center"
+            >
+              <div className="flex w-24 items-center">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
-                    className={`w-4 h-4 ${
-                      star <= rating.stars
-                        ? "text-yellow-400 fill-yellow-400"
+                    className={`h-4 w-4 ${
+                      star <= item.stars
+                        ? "fill-yellow-400 text-yellow-400"
                         : "text-gray-300"
                     }`}
                   />
                 ))}
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 ml-2">
+
+              <div className="ml-2 h-2.5 w-full rounded-full bg-gray-200">
                 <div
-                  className="bg-yellow-400 h-2.5 rounded-full"
-                  style={{ width: `${rating.percentage}%` }}
-                ></div>
+                  className="h-2.5 rounded-full bg-yellow-400"
+                  style={{
+                    width: `${item.percentage}%`,
+                  }}
+                />
               </div>
-              <span className="ml-2 text-sm text-gray-600 w-12">
-                {rating.percentage}%
+
+              <span className="ml-2 w-12 text-sm text-gray-600">
+                {item.percentage}%
               </span>
-              <span className="ml-2 text-sm text-gray-600 w-12">
-                ({rating.count})
+
+              <span className="ml-2 w-12 text-sm text-gray-600">
+                ({item.count})
               </span>
             </div>
           ))}
+
           <Link href={`/review/${product.slug}`}>
-            <button className="text-sm text-blue-600 mt-2">
+            <button className="mt-2 text-sm text-blue-600">
               See all reviews
             </button>
           </Link>
         </div>
+
+        {/* Reviews */}
         <div className="md:w-2/3">
-          <div className="flex justify-between mb-4">
+          <div className="mb-4 flex justify-between">
             {user ? (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button>Leave a Review</Button>
                 </DialogTrigger>
+
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Submit Your Review</DialogTitle>
+                    <DialogTitle>
+                      Submit Your Review
+                    </DialogTitle>
                   </DialogHeader>
 
-                  <form onSubmit={form.onSubmit(handleSubmit)}>
-                    {/* Rating Select */}
-                    <div style={{ marginBottom: "1rem" }}>
+                  <form
+                    onSubmit={form.onSubmit(handleSubmit)}
+                  >
+                    <div className="mb-4">
                       <Select
-                        onValueChange={(value) =>
-                          form.setFieldValue("rating", value)
-                        }
                         value={form.values.rating}
+                        onValueChange={(value) =>
+                          form.setFieldValue(
+                            "rating",
+                            value
+                          )
+                        }
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select Rating" />
                         </SelectTrigger>
+
                         <SelectContent>
                           <SelectGroup>
-                            <SelectLabel>Rating</SelectLabel>
-                            <SelectItem value="1">1 Star</SelectItem>
-                            <SelectItem value="2">2 Stars</SelectItem>
-                            <SelectItem value="3">3 Stars</SelectItem>
-                            <SelectItem value="4">4 Stars</SelectItem>
-                            <SelectItem value="5">5 Stars</SelectItem>
+                            <SelectLabel>
+                              Rating
+                            </SelectLabel>
+
+                            <SelectItem value="1">
+                              1 Star
+                            </SelectItem>
+
+                            <SelectItem value="2">
+                              2 Stars
+                            </SelectItem>
+
+                            <SelectItem value="3">
+                              3 Stars
+                            </SelectItem>
+
+                            <SelectItem value="4">
+                              4 Stars
+                            </SelectItem>
+
+                            <SelectItem value="5">
+                              5 Stars
+                            </SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    {/* Review Textarea */}
-                    <div style={{ marginBottom: "1rem" }}>
+                    <div className="mb-4">
                       <Textarea
                         placeholder="Write your review here"
                         {...form.getInputProps("review")}
                       />
                     </div>
 
-                    {/* Submit Button */}
                     <DialogFooter>
-                      <Button type="submit">Submit Review</Button>
+                      <Button
+                        type="submit"
+                        disabled={loading}
+                      >
+                        {loading
+                          ? "Submitting..."
+                          : "Submit Review"}
+                      </Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
               </Dialog>
             ) : (
-              <Button onClick={() => router.push("/sign-in")}>
-                {" "}
+              <Button
+                onClick={() =>
+                  router.push("/sign-in")
+                }
+              >
                 Login to add review
               </Button>
             )}
+
             <div className="relative">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none border rounded py-2 px-4 pr-8 leading-tight focus:outline focus:border-blue-500"
+                onChange={(event) =>
+                  setSortBy(event.target.value)
+                }
+                className="appearance-none rounded border px-4 py-2 pr-8 leading-tight focus:border-blue-500 focus:outline-none"
               >
-                {" "}
-                <option>Most Recent</option>
-                <option>Highest Rated</option>
-                <option>Lowest Rated</option>
+                <option value="Most Recent">
+                  Most Recent
+                </option>
+
+                <option value="Highest Rated">
+                  Highest Rated
+                </option>
+
+                <option value="Lowest Rated">
+                  Lowest Rated
+                </option>
               </select>
+
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="h-4 w-4" />
               </div>
             </div>
           </div>
-          {product.rating === 0 || product.numofReviews == 0 ? (
-            <div className="flex justify-center">No Reviews yet.</div>
+
+          {/* Review List */}
+          {product.rating === 0 ||
+          product.numofReviews === 0 ? (
+            <div className="flex justify-center">
+              No Reviews yet.
+            </div>
           ) : (
-            reviews.slice(0, 3).map((i: any, index: number) => {
-              console.log(i);
-              return (
-                <div className="border-t pt-4" key={index}>
-                  <div className="flex items-center mb-2">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-xl font-semibold mr-3">
-                      {i.reviewBy.username.substring(0, 1).toUpperCase()}
+            reviews
+              .slice(0, 3)
+              .map((review: any, index: number) => (
+                <div
+                  className="border-t pt-4"
+                  key={review._id || index}
+                >
+                  <div className="mb-2 flex items-center">
+                    <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-300 text-xl font-semibold">
+                      {review.reviewBy?.username
+                        ?.substring(0, 1)
+                        .toUpperCase()}
                     </div>
+
                     <div>
                       <div className="flex items-center">
-                        <span className="font-semibold mr-2 capitalize ">
-                          {i.reviewBy.username}
+                        <span className="mr-2 font-semibold capitalize">
+                          {review.reviewBy?.username}
                         </span>
-                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+
+                        <span className="rounded bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
                           Verified
                         </span>
                       </div>
+
                       <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-4 h-4 ${
-                              star <= Math.round(i.rating)
-                                ? "text-yellow-400 fill-yellow-400"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
+                        {[1, 2, 3, 4, 5].map(
+                          (star) => (
+                            <Star
+                              key={star}
+                              className={`h-4 w-4 ${
+                                star <=
+                                Math.round(
+                                  review.rating
+                                )
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          )
+                        )}
                       </div>
                     </div>
                   </div>
-                  <p className="text-lg mb-2">{i.review}</p>
+
+                  <p className="mb-2 text-lg">
+                    {review.review}
+                  </p>
                 </div>
-              );
-            })
+              ))
           )}
         </div>
       </div>

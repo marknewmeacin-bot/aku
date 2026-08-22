@@ -6,7 +6,13 @@ import { Minus, Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-const ProductCarousel = ({ products }: { products: any[] }) => {
+interface ProductCarouselProps {
+  products?: any[];
+}
+
+const ProductCarousel = ({
+  products = [],
+}: ProductCarouselProps) => {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
@@ -14,138 +20,184 @@ const ProductCarousel = ({ products }: { products: any[] }) => {
 
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Update selected index when the slide changes
   useEffect(() => {
-    if (emblaApi) {
-      const onSelect = () => {
-        setSelectedIndex(emblaApi.selectedScrollSnap());
-      };
+    if (!emblaApi) return;
 
-      // Listen to slide selection events
-      emblaApi.on("select", onSelect);
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+    };
 
-      // Set the initial index
-      onSelect();
+    emblaApi.on("select", onSelect);
+    onSelect();
 
-      return () => {
-        emblaApi.off("select", onSelect);
-      };
-    }
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
   }, [emblaApi]);
 
+  if (!products.length) {
+    return null;
+  }
+
   return (
-    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 ">
-      <div className="heading mb-[10px] ownContainer text-center uppercase sm:mb-[40px]">
-        FEATURED PRODUCTS
+    <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Heading */}
+      <div className="heading ownContainer mb-[10px] text-center uppercase sm:mb-[40px]">
+        Featured Products
       </div>
-      <div className="embla overflow-hidden" ref={emblaRef}>
-        <div className="embla__container flex">
+
+      {/* Carousel */}
+      <div ref={emblaRef} className="overflow-hidden">
+        <div className="flex">
           {products.map((product, index) => {
-            const subProduct = product.subProducts?.[0]; // Assuming you're displaying the first sub-product
+            const subProduct = product?.subProducts?.[0];
+
             const productImage =
-              subProduct?.images?.[0]?.url || "https://placehold.co/600x600";
-            const productPrice = subProduct?.sizes?.[0]?.price || "N/A";
+              subProduct?.images?.[0]?.url ||
+              "https://placehold.co/600x600";
+
+            const productPrice =
+              Number(subProduct?.sizes?.[0]?.price) || 0;
+
+            const discountPercent =
+              Number(subProduct?.discount) || 0;
+
             const originalPrice =
-              productPrice + (productPrice * subProduct.discount) / 100;
-            const discountPercent = subProduct.discount || 0;
+              discountPercent > 0
+                ? productPrice +
+                  (productPrice * discountPercent) / 100
+                : productPrice;
+
+            const category =
+              typeof product?.category === "object"
+                ? product?.category?.name
+                : product?.category || "";
+
+            const rating = Number(product?.rating) || 0;
+            const numReviews = Number(product?.numReviews) || 0;
+            const description = product?.description || "";
 
             return (
               <div
-                key={index}
-                className="embla__slide flex-[0_0_100%] min-w-0 flex flex-col lg:flex-row gap-4 sm:gap-8"
+                key={product?._id || product?.slug || index}
+                className="flex min-w-0 flex-[0_0_100%] flex-col gap-4 sm:gap-8 lg:flex-row"
               >
-                <div className="lg:w-1/2 flex justify-center items-center">
+                {/* Product Image */}
+                <div className="flex items-center justify-center lg:w-1/2">
                   <img
                     src={productImage}
-                    alt={product.name}
+                    alt={product?.name || "Product"}
                     width={600}
                     height={600}
-                    className="w-full max-w-md h-auto object-cover rounded-lg shadow-md"
+                    className="h-auto w-full max-w-md rounded-lg object-cover shadow-md"
                   />
                 </div>
-                <div className="lg:w-1/2 space-y-3 sm:space-y-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold">
-                    {product.name}
+
+                {/* Product Details */}
+                <div className="space-y-3 lg:w-1/2 sm:space-y-4">
+                  <h2 className="text-2xl font-bold sm:text-3xl">
+                    {product?.name || "Product"}
                   </h2>
-                  <p className="text-xs lg:text-sm text-gray-500">
-                    {product.category.name}
-                  </p>
+
+                  {category && (
+                    <p className="text-xs text-gray-500 lg:text-sm">
+                      {category}
+                    </p>
+                  )}
+
+                  {/* Rating */}
                   <div className="flex items-center gap-2">
                     <div className="flex">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-4 h-4 ${
-                            i < product.rating
-                              ? "text-yellow-400 fill-yellow-400"
+                          className={`h-4 w-4 ${
+                            i < rating
+                              ? "fill-yellow-400 text-yellow-400"
                               : "text-gray-300"
                           }`}
                         />
                       ))}
                     </div>
+
                     <span className="text-sm font-medium">
-                      {product.rating}
+                      {rating}
                     </span>
+
                     <span className="text-sm text-gray-500">
-                      ({product.numReviews} Reviews)
+                      ({numReviews} Reviews)
                     </span>
                   </div>
 
-                  <p className="text-sm sm:text-base text-gray-600">
-                    {product.description.slice(0, 200)}...
-                    <span className="text-blue-500 cursor-pointer ml-1 hover:underline">
-                      Read More
-                    </span>
-                  </p>
+                  {/* Description */}
+                  {description && (
+                    <p className="text-sm text-gray-600 sm:text-base">
+                      {description.slice(0, 200)}
+                      {description.length > 200 && "..."}
+                    </p>
+                  )}
 
-                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4">
+                  {/* Price + Quantity */}
+                  <div className="flex flex-col items-start justify-between py-4 lg:flex-row lg:items-center">
+                    {/* Price */}
                     <div className="mb-4 lg:mb-0">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl lg:text-3xl font-bold">
-                          ₹{productPrice}
+                        <span className="text-2xl font-bold lg:text-3xl">
+                          ₹{productPrice.toFixed(2)}
                         </span>
+
                         {discountPercent > 0 && (
                           <>
                             <span className="text-lg text-gray-500 line-through">
                               ₹{originalPrice.toFixed(2)}
                             </span>
-                            <span className="text-red-500 font-semibold">
+
+                            <span className="font-semibold text-red-500">
                               -{discountPercent}%
                             </span>
                           </>
                         )}
                       </div>
+
                       <p className="text-sm text-gray-500">
                         Inclusive of all taxes
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-0">
+                    {/* Quantity */}
+                    <div className="flex items-center">
                       <Button
+                        type="button"
                         variant="outline"
-                        className="bg-[#F2F2F2]"
                         size="icon"
+                        className="bg-[#F2F2F2]"
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
-                      <span className="w-12 text-center border-y-2 py-[6px]">
+
+                      <span className="w-12 border-y-2 py-[6px] text-center">
                         1
                       </span>
+
                       <Button
+                        type="button"
                         variant="outline"
-                        className="bg-[#F2F2F2]"
                         size="icon"
+                        className="bg-[#F2F2F2]"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
 
-                  <Link href={`/product/${product.slug}?style=0`}>
-                    <Button className="w-full sm:w-auto px-8">
-                      Learn More
-                    </Button>
-                  </Link>
+                  {/* Learn More */}
+                  {product?.slug && (
+                    <Link href={`/product/${product.slug}?style=0`}>
+                      <Button className="w-full px-8 sm:w-auto">
+                        Learn More
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             );
@@ -153,26 +205,37 @@ const ProductCarousel = ({ products }: { products: any[] }) => {
         </div>
       </div>
 
-      {/* Add navigation dots */}
-      <div className="flex justify-center space-x-2 pt-6">
-        {products.map((_, index) => (
-          <button
-            key={index}
-            className={`w-3 h-3 rounded-full ${
-              selectedIndex === index ? "bg-gray-800" : "bg-gray-400"
-            }`}
-            onClick={() => emblaApi?.scrollTo(index)}
-          />
-        ))}
-      </div>
+      {/* Navigation Dots */}
+      {products.length > 1 && (
+        <div className="flex justify-center gap-2 pt-6">
+          {products.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => emblaApi?.scrollTo(index)}
+              aria-label={`Go to slide ${index + 1}`}
+              aria-current={selectedIndex === index}
+              className={`h-3 w-3 rounded-full transition-colors ${
+                selectedIndex === index
+                  ? "bg-gray-800"
+                  : "bg-gray-400"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-export default function FeaturedProducts({ products }: { products: any[] }) {
+const FeaturedProducts = ({
+  products = [],
+}: ProductCarouselProps) => {
   return (
     <div className="space-y-12">
       <ProductCarousel products={products} />
     </div>
   );
-}
+};
+
+export default FeaturedProducts;
