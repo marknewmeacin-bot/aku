@@ -42,8 +42,7 @@ export default function Footer() {
           <h2 className="text-2xl font-bold">Aku</h2>
 
           <p className="text-sm">
-            8569 Bond Rd, Elk Grove, California, 95624, United States.
-          </p>
+           Meriema,Kohima 797004 Nagaland, India          </p>
 
           <p className="text-sm">contact@aku.com</p>
 
