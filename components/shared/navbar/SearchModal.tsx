@@ -8,15 +8,37 @@ import {
   getProductsByQuery,
   getTopSellingProducts,
 } from "@/lib/database/actions/product.actions";
+import { getAllSubCategories } from "@/lib/database/actions/subCategory.actions";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { handleError } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+type SubCategory = {
+  _id: string;
+  name: string;
+};
+
 const SearchModal = ({ setOpen }: { setOpen: any }) => {
   const [query, setQuery] = useState<string>("");
   const [products, setProducts] = useState([]);
+  const [trendingSearches, setTrendingSearches] = useState<SubCategory[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  useEffect(() => {
+    async function fetchTrendingSearches() {
+      try {
+        const res = await getAllSubCategories();
+        setTrendingSearches(
+          res?.subCategories?.map((subCategory: SubCategory) => subCategory) ||
+            []
+        );
+      } catch (error) {
+        handleError(error);
+      }
+    }
+
+    fetchTrendingSearches();
+  }, []);
   useEffect(() => {
     async function fetchBestSellerProducts() {
       try {
@@ -55,18 +77,10 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
 
     if (query.length > 0) fetchDataByQuery();
   }, [query.length]);
-  const trendingSearches = [
-    "Perfume",
-    "Bath & Body",
-    "Gifting",
-    "Crazy Deals",
-    "Combos",
-  ];
-
   return (
     <Dialog>
       <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-        <div className="w-full max-w-md md:max-w-lg lg:max-w-2xl mx-4 md:mx-6 lg:mx-auto p-4 sm:p-6 bg-background rounded-lg shadow-lg z-50">
+        <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg bg-background p-4 shadow-lg z-50 mx-4 sm:p-6 md:mx-6 md:max-w-lg lg:mx-auto lg:max-w-2xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Search</h2>
             <Button
@@ -89,12 +103,17 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
             <div className="flex flex-wrap gap-2">
               {trendingSearches.map((search) => (
                 <Button
-                  onClick={() => setQuery(search)}
-                  key={search}
+                  key={search._id}
                   variant={"outline"}
                   size={"sm"}
+                  asChild
                 >
-                  {search}
+                  <Link
+                    href={`/shop/subCategory/${search._id}?name=${encodeURIComponent(search.name)}`}
+                    onClick={() => setOpen(false)}
+                  >
+                    {search.name}
+                  </Link>
                 </Button>
               ))}
             </div>
@@ -117,7 +136,7 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
                           <img
                             src={product.subProducts[0]?.images[0]?.url}
                             alt={product.name}
-                            className="absolute inset-0 w-[200px] h-full object-cover rounded-none"
+                            className="absolute inset-0 h-full w-full rounded-none object-cover"
                           />
 
                           {product.subProducts[0]?.discount > 0 && (
@@ -151,7 +170,7 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
                           <img
                             src={product.subProducts[0]?.images[0]?.url}
                             alt={product.name}
-                            className="absolute inset-0 w-[200px] h-full object-cover rounded-none"
+                            className="absolute inset-0 h-full w-full rounded-none object-cover"
                           />
                           {product.subProducts[0]?.discount > 0 && (
                             <span className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">

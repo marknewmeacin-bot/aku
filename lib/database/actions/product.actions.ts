@@ -1,10 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import {
-  revalidateTag,
-  unstable_cache,
-} from "next/cache";
+import { revalidateTag } from "next/cache";
+import mongoose from "mongoose";
 
 import { handleError } from "@/lib/utils";
 
@@ -14,12 +12,30 @@ import Product from "../models/product.model";
 import SubCategory from "../models/subCategory.model";
 import User from "../models/user.model";
 
+function normalizeProductImages(product: any) {
+  return {
+    ...product,
+    subProducts: (product.subProducts || []).map((subProduct: any) => ({
+      ...subProduct,
+      images: (subProduct.images || [])
+        .map((image: any) => {
+          if (typeof image === "string") return { url: image };
+          if (typeof image?.url === "string") return image;
+          if (typeof image?.secure_url === "string") {
+            return { ...image, url: image.secure_url };
+          }
+          return null;
+        })
+        .filter(Boolean),
+    })),
+  };
+}
+
 // ============================================================
 // GET TOP SELLING PRODUCTS
 // ============================================================
 
-export const getTopSellingProducts = unstable_cache(
-  async () => {
+export async function getTopSellingProducts() {
     try {
       await connectToDatabase();
 
@@ -37,26 +53,22 @@ export const getTopSellingProducts = unstable_cache(
       }
 
       return {
-        products: JSON.parse(JSON.stringify(products)),
+        products: JSON.parse(
+          JSON.stringify(products.map(normalizeProductImages))
+        ),
         success: true,
         message: "Products fetched successfully.",
       };
     } catch (error) {
       handleError(error);
     }
-  },
-  ["top_selling_products"],
-  {
-    revalidate: 1800,
-  }
-);
+}
 
 // ============================================================
 // GET NEW ARRIVAL PRODUCTS
 // ============================================================
 
-export const getNewArrivalProducts = unstable_cache(
-  async () => {
+export async function getNewArrivalProducts() {
     try {
       await connectToDatabase();
 
@@ -74,19 +86,16 @@ export const getNewArrivalProducts = unstable_cache(
       }
 
       return {
-        products: JSON.parse(JSON.stringify(products)),
+        products: JSON.parse(
+          JSON.stringify(products.map(normalizeProductImages))
+        ),
         success: true,
         message: "Fetched all new arrival products.",
       };
     } catch (error) {
       handleError(error);
     }
-  },
-  ["new_arrival_products"],
-  {
-    revalidate: 1800,
-  }
-);
+}
 
 // ============================================================
 // GET PRODUCTS BY SEARCH QUERY
@@ -127,8 +136,11 @@ export async function getProductsByQuery(query: string) {
 // GET SINGLE PRODUCT
 // ============================================================
 
-export const getSingleProduct = unstable_cache(
-  async (slug: string, style: number, size: number) => {
+export async function getSingleProduct(
+  slug: string,
+  style: number,
+  size: number
+) {
     try {
       await connectToDatabase();
 
@@ -153,6 +165,8 @@ export const getSingleProduct = unstable_cache(
           message: "Product not found.",
         };
       }
+
+      Object.assign(product, normalizeProductImages(product));
 
       const subProduct = product.subProducts?.[style];
 
@@ -292,13 +306,7 @@ export const getSingleProduct = unstable_cache(
       handleError(error);
       redirect("/");
     }
-  },
-  ["product"],
-  {
-    revalidate: 1800,
-    tags: ["product"],
-  }
-);
+}
 
 // ============================================================
 // CREATE / UPDATE PRODUCT REVIEW
@@ -518,18 +526,19 @@ export async function getProductDetailsById(
 // GET RELATED PRODUCTS
 // ============================================================
 
-export const getRelatedProductsBySubCategoryIds =
-  unstable_cache(
-    async (subCategoryIds: string[]) => {
+export async function getRelatedProductsBySubCategoryIds(
+  subCategoryIds: string[]
+) {
       try {
         await connectToDatabase();
 
-        const query = subCategoryIds.length
-          ? {
-              subCategories: {
-                $in: subCategoryIds,
-              },
-            }
+        const subCategoryValues = subCategoryIds.flatMap((id) =>
+          mongoose.Types.ObjectId.isValid(id)
+            ? [id, new mongoose.Types.ObjectId(id)]
+            : [id]
+        );
+        const query = subCategoryValues.length
+          ? { subCategories: { $in: subCategoryValues } }
           : {};
 
         const products = await Product.find(query)
@@ -546,24 +555,20 @@ export const getRelatedProductsBySubCategoryIds =
 
         return {
           success: true,
-          products: JSON.parse(JSON.stringify(products)),
+          products: JSON.parse(
+            JSON.stringify(products.map(normalizeProductImages))
+          ),
         };
-      } catch (error) {
-        handleError(error);
-      }
-    },
-    ["subcategory_products"],
-    {
-      revalidate: 1800,
+    } catch (error) {
+      handleError(error);
     }
-  );
+}
 
 // ============================================================
 // GET FEATURED PRODUCTS
 // ============================================================
 
-export const getAllFeaturedProducts = unstable_cache(
-  async () => {
+export async function getAllFeaturedProducts() {
     try {
       await connectToDatabase();
 
@@ -578,7 +583,7 @@ export const getAllFeaturedProducts = unstable_cache(
 
       return {
         featuredProducts: JSON.parse(
-          JSON.stringify(featuredProducts)
+          JSON.stringify(featuredProducts.map(normalizeProductImages))
         ),
         success: true,
         message: "Successfully fetched all featured products.",
@@ -586,9 +591,4 @@ export const getAllFeaturedProducts = unstable_cache(
     } catch (error) {
       handleError(error);
     }
-  },
-  ["featured_products"],
-  {
-    revalidate: 1800,
-  }
-);
+}

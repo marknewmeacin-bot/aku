@@ -16,12 +16,12 @@ const UserSchema = new Schema(
 
     image: {
       type: String,
-      required: true,
+      default: "",
     },
 
     username: {
       type: String,
-      required: true,
+      default: "",
     },
 
     role: {
@@ -39,47 +39,38 @@ const UserSchema = new Schema(
         type: String,
         default: "",
       },
-
       lastName: {
         type: String,
         default: "",
       },
-
       phoneNumber: {
         type: String,
         default: "",
       },
-
       address1: {
         type: String,
         default: "",
       },
-
       address2: {
         type: String,
         default: "",
       },
-
       city: {
         type: String,
         default: "",
       },
-
       state: {
         type: String,
         default: "",
       },
-
       zipCode: {
         type: String,
         default: "",
       },
-
       country: {
         type: String,
         default: "",
       },
-
       active: {
         type: Boolean,
         default: true,

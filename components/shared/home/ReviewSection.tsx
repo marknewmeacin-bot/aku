@@ -11,7 +11,7 @@ const reviews = [
     instagram: "milli_thanur_123",
     image: "https://placehold.co/200x200",
     rating: 5,
-    text: "VIBECART has set a new standard in the fragrance market, offering exceptional quality at remarkably affordable prices.",
+    text: "AKU has set a new standard in the fragrance market, offering exceptional quality at remarkably affordable prices.",
   },
   {
     id: 2,
@@ -19,7 +19,7 @@ const reviews = [
     instagram: "shubhman_92_ravi",
     image: "https://placehold.co/200x200",
     rating: 5,
-    text: "Amazed by the lasting power of these scents. VIBECART provides high-end fragrances at unmatched prices.",
+    text: "Amazed by the lasting power of these scents. AKU provides high-end fragrances at unmatched prices.",
   },
   {
     id: 3,
@@ -27,7 +27,7 @@ const reviews = [
     instagram: "raghav.varma_89",
     image: "https://placehold.co/200x200",
     rating: 5,
-    text: "Discovered my signature fragrance with VIBECART. The meticulous craftsmanship in their perfumes is truly impressive.",
+    text: "Discovered my signature fragrance with AKU. The meticulous craftsmanship in their perfumes is truly impressive.",
   },
 ];
 const ReviewSection = () => {

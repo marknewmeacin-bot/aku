@@ -15,10 +15,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const AccountDropDown = () => {
   const { isSignedIn: isLoggedIn } = useUser();
   const { signOut } = useClerk();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const [accountMenuOpen, setAccountMenuOpen] = useAtom(accountMenuState, {
     store: useStore(),
@@ -81,7 +91,10 @@ const AccountDropDown = () => {
           </p>
         ) : (
           <DropdownMenuItem
-            onClick={() => signOut({ redirectUrl: "/sign-in" })}
+            onClick={() => {
+              setAccountMenuOpen(false);
+              setLogoutDialogOpen(true);
+            }}
           >
             <LogOut />
             <span>Log out</span>
@@ -89,6 +102,34 @@ const AccountDropDown = () => {
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
+
+      <Dialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log out?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out of your account?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setLogoutDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => signOut({ redirectUrl: "/sign-in" })}
+            >
+              Log out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DropdownMenu>
   );
 };

@@ -19,7 +19,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "VibeCart - Shop Scents that fits you!",
+  title: "Aku - Shop any that fits you!",
   description: "Online Shopping Site for to shop scents that fits you!",
 };
 

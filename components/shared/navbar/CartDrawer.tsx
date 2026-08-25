@@ -10,7 +10,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { X, Minus, Plus } from "lucide-react";
 import Link from "next/link";
 import { useAtom, useStore } from "jotai";
 
@@ -19,15 +18,22 @@ import { cartMenuState } from "./store";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart";
-import {
-  saveCartForUser,
-  updateCartForUser,
-} from "@/lib/database/actions/cart.actions";
+import { saveCartForUser } from "@/lib/database/actions/cart.actions";
 import { FaArrowCircleRight } from "react-icons/fa";
 import { handleError } from "@/lib/utils";
 import CartSheetItems from "../cart/CartSheetItems";
 
 const CartDrawer = () => {
+  type CartItem = {
+    _uid: string;
+    _id: string;
+    style: number;
+    size: string;
+    price: number | string;
+    qty: number;
+    color: { color: string; image: string };
+    vendor?: { _id?: string; [key: string]: unknown };
+  };
   const router = useRouter();
   const { userId } = useAuth();
   useEffect(() => {
@@ -40,36 +46,28 @@ const CartDrawer = () => {
     setCartMenuOpen(true);
     console.log("cart", cartMenuOpen);
   };
-  interface CartItem {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-    image: string;
-  }
-  const cart = useCartStore((state: any) => state.cart.cartItems);
+  const cart = useCartStore(
+    (state: { cart: { cartItems: CartItem[] } }) => state.cart.cartItems
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const update = async () => {
+    if (!userId || cart.length === 0) return;
+
+    const save = async () => {
       try {
-        await updateCartForUser(cart).then((res) => {
-          if (res?.success) {
-            updateCartForUser(res?.data);
-          } else {
-            console.log(res?.message);
-          }
-        });
+        await saveCartForUser(cart, userId);
       } catch (error) {
         handleError(error);
       }
     };
-    if (cart.length > 0) {
-      update();
-    }
-  }, [cart.length > 0]);
+
+    const timeout = window.setTimeout(save, 300);
+    return () => window.clearTimeout(timeout);
+  }, [cart, userId]);
   const total = cart.reduce(
-    (sum: any, item: any) => sum + parseFloat(item.price) * item.qty,
+    (sum: number, item: CartItem) =>
+      sum + parseFloat(String(item.price)) * item.qty,
     0
   );
   const saveCartToDbHandler = async () => {
@@ -118,14 +116,14 @@ const CartDrawer = () => {
                   </h1>
                   <Link href={"/shop"}>
                     <Button className="flex justify-center items-center w-full gap-[10px]">
-                      Shop Now
+                      Shop All
                       <FaArrowCircleRight />
                     </Button>
                   </Link>
                 </div>
               </div>
             ) : (
-              cart.map((product: any) => (
+              cart.map((product: CartItem) => (
                 <CartSheetItems product={product} key={product._uid} />
               ))
             )}

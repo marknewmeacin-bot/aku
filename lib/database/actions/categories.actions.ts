@@ -3,10 +3,8 @@
 import { handleError } from "@/lib/utils";
 import { connectToDatabase } from "../connect";
 import Category from "../models/category.model";
-import { unstable_cache } from "next/cache";
 
-export const getAllCategories = unstable_cache(
-  async () => {
+export async function getAllCategories() {
     try {
       await connectToDatabase();
       const categories = await Category.find({}).sort({ updatedAt: -1 }).lean();
@@ -18,9 +16,4 @@ export const getAllCategories = unstable_cache(
     } catch (error) {
       handleError(error);
     }
-  },
-  ["all_categories"],
-  {
-    revalidate: 1800,
-  }
-);
+}

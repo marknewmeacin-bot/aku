@@ -10,9 +10,13 @@ import { FaCheckCircle } from "react-icons/fa";
 import { useAtom, useStore } from "jotai";
 import { quantityState } from "../jotai/store";
 import { handleError } from "@/lib/utils";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 const AddtoCartButton = ({ product, size }: { product: any; size: number }) => {
   const frontendSize = useSearchParams().get("size");
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
   console.log(frontendSize);
   useEffect(() => {
     useCartStore.persist.rehydrate();
@@ -23,6 +27,14 @@ const AddtoCartButton = ({ product, size }: { product: any; size: number }) => {
     store: useStore(),
   });
   const addtoCartHandler = async () => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      const nextUrl = `${window.location.pathname}${window.location.search}`;
+      router.push(`/sign-in?next=${encodeURIComponent(nextUrl)}`);
+      return;
+    }
+
     if (frontendSize === null) {
       toast.error("Please select the size!", {
         style: { backgroundColor: "#FBE0E2" },
@@ -44,10 +56,10 @@ const AddtoCartButton = ({ product, size }: { product: any; size: number }) => {
 
         return;
       } else {
-        let _uid = `${data._id}_${product.style}_${frontendSize}`;
-        let exist: any = cart.find((p: any) => p._uid === _uid);
+        const _uid = `${data._id}_${product.style}_${frontendSize}`;
+        const exist: any = cart.find((p: any) => p._uid === _uid);
         if (exist) {
-          let newCart = cart.map((p: any) => {
+          const newCart = cart.map((p: any) => {
             if (p._uid == exist._uid) {
               return { ...p, qty: qty };
             }

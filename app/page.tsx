@@ -1,12 +1,10 @@
 // ISR(CACHE) - 1 HOUR
 import BannerCarousel from "@/components/shared/home/BannerCarousel";
-import BlogImages from "@/components/shared/home/BlogImages";
 import CategorySection from "@/components/shared/home/CategorySection";
 import CrazyDeals from "@/components/shared/home/CrazyDeals";
 import FeaturedProducts from "@/components/shared/home/FeaturedProducts";
 import NeedOfWebsite from "@/components/shared/home/NeedOfWebsite";
 import ProductCard from "@/components/shared/home/ProductCard";
-import ReviewSection from "@/components/shared/home/ReviewSection";
 import SpecialCombos from "@/components/shared/home/SpecialCombos";
 import { fetchAllWebsiteBanners } from "@/lib/database/actions/banners.actions";
 import {
@@ -18,28 +16,42 @@ import {
   getNewArrivalProducts,
   getTopSellingProducts,
 } from "@/lib/database/actions/product.actions";
-import { getAllSubCategoriesByName } from "@/lib/database/actions/subCategory.actions";
+import { getAllSubCategories } from "@/lib/database/actions/subCategory.actions";
+
+export const dynamic = "force-dynamic";
 
 const HomePage = async () => {
-  const desktopImages: any = await fetchAllWebsiteBanners().catch((err) =>
-    console.log(err)
-  );
-  const subcategoriesData: any = await getAllSubCategoriesByName(
-    "unisex"
-  ).catch((err) => console.log(err));
-  const specialCombosHomeData: any = await getAllSpecialComboOffers().catch(
-    (err) => console.log(err)
-  );
-  const crazyDealsData: any = await getAllCrazyDealOffers().catch((err) =>
-    console.log(err)
-  );
-  const topSellingProducts = await getTopSellingProducts().catch((err) =>
-    console.log(err)
-  );
+  const desktopImages =
+    (await fetchAllWebsiteBanners().catch((err) => {
+      console.error("Failed to load banners:", err);
+      return [];
+    })) || [];
+  const subcategoriesData =
+    (await getAllSubCategories().catch((err) => {
+      console.error("Failed to load subcategories:", err);
+      return null;
+    })) || { subCategories: [] };
+  const specialCombosHomeData =
+    (await getAllSpecialComboOffers().catch((err) => {
+      console.error("Failed to load special combos:", err);
+      return null;
+    })) || { offers: [], message: "", success: false };
+  const crazyDealsData =
+    (await getAllCrazyDealOffers().catch((err) => {
+      console.error("Failed to load crazy deals:", err);
+      return null;
+    })) || { offers: [], message: "", success: false };
+  const topSellingProducts =
+    (await getTopSellingProducts().catch((err) => {
+      console.error("Failed to load top-selling products:", err);
+      return null;
+    })) || { products: [] };
 
-  const newArrivalProducts = await getNewArrivalProducts().catch((err) =>
-    console.log(err)
-  );
+  const newArrivalProducts =
+    (await getNewArrivalProducts().catch((err) => {
+      console.error("Failed to load new arrivals:", err);
+      return null;
+    })) || { products: [] };
 
   const transformedBestSellerProducts = topSellingProducts?.products.map(
     (product: any) => ({
@@ -87,9 +99,11 @@ const HomePage = async () => {
         }),
     })
   );
-  const featuredProducts: any = await getAllFeaturedProducts().catch((err) =>
-    console.log(err)
-  );
+  const featuredProducts =
+    (await getAllFeaturedProducts().catch((err) => {
+      console.error("Failed to load featured products:", err);
+      return null;
+    })) || { featuredProducts: [] };
   return (
     <div>
       <BannerCarousel desktopImages={desktopImages} />
@@ -101,13 +115,11 @@ const HomePage = async () => {
       <CategorySection subCategories={subcategoriesData.subCategories} />
       <FeaturedProducts products={featuredProducts.featuredProducts} />
       <CrazyDeals dealsData={crazyDealsData} />
-      <NeedOfWebsite />
       <ProductCard
         heading="NEW ARRIVALS"
         products={transformedNewArrivalProducts}
       />
-      <ReviewSection />
-      <BlogImages />
+      <NeedOfWebsite />
     </div>
   );
 };

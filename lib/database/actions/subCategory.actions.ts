@@ -4,11 +4,28 @@ import { handleError } from "@/lib/utils";
 import { connectToDatabase } from "../connect";
 import SubCategory from "../models/subCategory.model";
 import Category from "../models/category.model";
-import { unstable_cache } from "next/cache";
+
+export async function getAllSubCategories() {
+  try {
+    await connectToDatabase();
+    const subCategories = await SubCategory.find({}).lean();
+    return {
+      message: "Successfully fetched all subcategories.",
+      subCategories: JSON.parse(JSON.stringify(subCategories)),
+      success: true,
+    };
+  } catch (error) {
+    handleError(error);
+    return {
+      message: "An error occurred while fetching subcategories.",
+      subCategories: [],
+      success: false,
+    };
+  }
+}
 
 // get all sub categories by its parent(category) id
-export const getAllSubCategoriesByParentId = unstable_cache(
-  async (parentId: string) => {
+export async function getAllSubCategoriesByParentId(parentId: string) {
     try {
       await connectToDatabase();
       const subCategoriesByParentId = await SubCategory.find({
@@ -23,20 +40,14 @@ export const getAllSubCategoriesByParentId = unstable_cache(
     } catch (error) {
       handleError(error);
     }
-  },
-  ["parent_subCategories"],
-  {
-    revalidate: 1800,
-  }
-);
+}
 // get all sub categories by its parent name
-export const getAllSubCategoriesByName = unstable_cache(
-  async (name: string) => {
+export async function getAllSubCategoriesByName(name: string) {
     try {
       await connectToDatabase();
 
       // Step 1: Find the parent category by name
-      const parentCategory: any = await Category.findOne({ name }).lean();
+      const parentCategory = await Category.findOne({ name }).lean();
       if (!parentCategory) {
         return {
           message: "Parent category not found.",
@@ -66,9 +77,4 @@ export const getAllSubCategoriesByName = unstable_cache(
         success: false,
       };
     }
-  },
-  ["subCategories"],
-  {
-    revalidate: 1800,
-  }
-);
+}

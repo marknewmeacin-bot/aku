@@ -16,7 +16,7 @@ const CrazyDeals = ({ dealsData }: { dealsData: CrazyDealsDataType }) => {
           {dealsData.offers.map((deal) => (
             <div key={deal._id} className="flex-shrink-0 w-[80vw] sm:w-[347px]">
               <img
-                src={deal.images[0].url}
+                src={deal.images?.[0]?.url || ""}
                 alt={deal.title}
                 className="w-full h-auto object-cover"
               />

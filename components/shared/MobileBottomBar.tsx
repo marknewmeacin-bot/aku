@@ -31,7 +31,7 @@ const MobileBottomBar = () => {
     console.log("acc", accountMenuOpen);
   };
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-t-200 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
       <div className="flex justify-around items-center h-16">
         <Link
           href={"/"}

@@ -28,7 +28,7 @@ const NeedOfWebsite = () => {
   ];
   return (
     <div className="container mx-auto px-4 mb-[20px] my-[10px]">
-      <h2 className="heading text-center my-[40px]">WHY VIBECART</h2>
+      <h2 className="heading text-center my-[40px]">WHY AKU</h2>
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
         {features.map((feature, index) => (
           <div key={index} className="flex flex-col items-center text-center ">

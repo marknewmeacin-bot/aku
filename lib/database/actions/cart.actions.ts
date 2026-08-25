@@ -1,6 +1,7 @@
 "use server";
 
 import { handleError } from "@/lib/utils";
+import { currentUser } from "@clerk/nextjs/server";
 
 import { connectToDatabase } from "../connect";
 import Cart from "../models/cart.model";
@@ -37,6 +38,28 @@ interface SavedCartProduct {
   price: number;
 }
 
+async function findOrCreateUser(clerkId: string) {
+  const existingUser = await User.findOne({ clerkId });
+  if (existingUser) return existingUser;
+
+  const clerkUser = await currentUser();
+  if (!clerkUser || clerkUser.id !== clerkId) return null;
+
+  const email = clerkUser.emailAddresses[0]?.emailAddress;
+  if (!email) return null;
+
+  return User.findOneAndUpdate(
+    { clerkId },
+    {
+      clerkId,
+      email,
+      image: clerkUser.imageUrl || "",
+      username: clerkUser.username || clerkUser.firstName || "",
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+}
+
 export async function saveCartForUser(
   cart: CartItem[],
   clerkId: string
@@ -44,7 +67,7 @@ export async function saveCartForUser(
   try {
     await connectToDatabase();
 
-    const user = await User.findOne({ clerkId });
+    const user = await findOrCreateUser(clerkId);
 
     if (!user) {
       return {
@@ -52,8 +75,6 @@ export async function saveCartForUser(
         message: "User not found.",
       };
     }
-
-    await Cart.deleteOne({ user: user._id });
 
     const products: SavedCartProduct[] = [];
 
@@ -110,11 +131,23 @@ export async function saveCartForUser(
       0
     );
 
-    await Cart.create({
-      products,
-      cartTotal: Number(cartTotal.toFixed(2)),
-      user: user._id,
-    });
+    if (products.length === 0) {
+      await Cart.deleteOne({ user: user._id });
+    } else {
+      await Cart.findOneAndUpdate(
+        { user: user._id },
+        {
+          products,
+          cartTotal: Number(cartTotal.toFixed(2)),
+          user: user._id,
+        },
+        {
+          upsert: true,
+          returnDocument: "after",
+          setDefaultsOnInsert: true,
+        }
+      );
+    }
 
     return {
       success: true,
@@ -129,7 +162,7 @@ export async function getSavedCartForUser(clerkId: string) {
   try {
     await connectToDatabase();
 
-    const user = await User.findOne({ clerkId });
+    const user = await findOrCreateUser(clerkId);
 
     if (!user) {
       return {
@@ -137,7 +170,7 @@ export async function getSavedCartForUser(clerkId: string) {
         message: "User not found.",
         user: null,
         cart: null,
-        address: [],
+        address: {},
       };
     }
 
@@ -149,7 +182,7 @@ export async function getSavedCartForUser(clerkId: string) {
       success: true,
       user: JSON.parse(JSON.stringify(user)),
       cart: JSON.parse(JSON.stringify(cart)),
-      address: JSON.parse(JSON.stringify(user.address ?? [])),
+      address: JSON.parse(JSON.stringify(user.address ?? {})),
     };
   } catch (error) {
     handleError(error);

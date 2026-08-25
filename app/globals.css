@@ -104,6 +104,17 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
+    overflow-x: hidden;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  body {
+    padding-bottom: 4rem;
   }
 }
 
@@ -113,6 +124,38 @@
 
 .textGap {
   @apply tracking-[0.6px];
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.product-image-3d__surface {
+  animation: product-image-float 5s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+@keyframes product-image-float {
+  0%,
+  100% {
+    transform: translateY(0) rotateZ(0deg);
+  }
+
+  50% {
+    transform: translateY(-6px) rotateZ(0.5deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-image-3d__surface {
+    animation: none;
+    transition: none;
+  }
 }
 
 .heading {

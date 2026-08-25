@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ObjectId } from "mongodb";
 import { Metadata } from "next";
 import IdInvalidError from "@/components/shared/IdInvalidError";
+import { getErrorMessage } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Order Page | Aku",
   description: "View All of your Order Details.",
@@ -19,7 +20,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
     return <IdInvalidError />;
   }
   const orderData = await getOrderDetailsById(id).catch((err) => {
-    toast.error(err);
+    toast.error(getErrorMessage(err));
   });
   if (!orderData?.success) {
     return <IdInvalidError />;
@@ -37,10 +38,13 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
       <div className="max-w-full mx-auto bg-white shadow-md">
         <div className="p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center mb-4">
+            <Link
+              href="/"
+              className="flex items-center mb-4 w-fit text-sm font-medium hover:underline"
+            >
               <ArrowLeft className="w-5 h-5 mr-2" />
-              <span className="text-sm font-medium">Home</span>
-            </div>
+              <span>Home</span>
+            </Link>
 
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold capitalize">
@@ -96,7 +100,7 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                       Your order is confirmed
                     </h2>
                     <p className="text-gray-600">
-                      Order will be delivered to you in 2-3 days on following
+                      Order will be delivered to you within a few minutes to a few hours at the following
                       address
                     </p>
                   </div>
@@ -140,11 +144,11 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                   {orderData?.orderData.products.map(
                     (item: any, index: number) => (
                       <div key={index}>
-                        <div className="flex items-center">
+                        <div className="flex min-w-0 items-center">
                           <img
                             src={item.image}
                             alt={item.name}
-                            className="mr-4 w-[60px] h-[60px]"
+                            className="mr-4 h-14 w-14 shrink-0 object-cover sm:h-16 sm:w-16"
                           />
                           <div>
                             <h3 className="font-medium">{item.name}</h3>

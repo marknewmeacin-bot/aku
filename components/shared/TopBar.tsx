@@ -1,6 +1,6 @@
 "use client";
 import { getAllTopBars } from "@/lib/database/actions/topbar.actions";
-import { handleError } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -15,11 +15,11 @@ const TopBarComponent = () => {
         await getAllTopBars()
           .then((res) => setMessages(res?.topbars))
           .catch((err) => {
-            toast.error(err);
+            toast.error(getErrorMessage(err));
             console.log(err);
           });
       } catch (error) {
-        handleError(error);
+        console.error("Failed to load top bar:", error);
       }
     }
     fetchBanners();

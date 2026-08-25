@@ -13,37 +13,14 @@ interface BannerCarouselProps {
   desktopImages: Banner[] | string[];
 }
 
-const mobileImages = [
-  "https://placehold.co/400x200?text=Mobile+Slide+1",
-  "https://placehold.co/400x200?text=Mobile+Slide+2",
-  "https://placehold.co/400x200?text=Mobile+Slide+3",
-];
-
 const BannerCarousel = ({ desktopImages }: BannerCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
 
   const desktopBannerUrls = desktopImages
     .map((image) => (typeof image === "string" ? image : image?.url))
     .filter((url): url is string => Boolean(url));
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 485px)");
-
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsMobile(event.matches);
-    };
-
-    setIsMobile(mediaQuery.matches);
-
-    mediaQuery.addEventListener("change", handleChange);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange);
-    };
-  }, []);
-
-  const images = isMobile ? mobileImages : desktopBannerUrls;
+  const images = desktopBannerUrls;
 
   const nextSlide = () => {
     setCurrentIndex((prev) => {
@@ -71,14 +48,14 @@ const BannerCarousel = ({ desktopImages }: BannerCarouselProps) => {
 
   if (images.length === 0) {
     return (
-      <div className="flex h-[400px] w-full items-center justify-center">
+      <div className="flex h-[clamp(220px,42vw,400px)] w-full items-center justify-center">
         <p className="text-gray-500">No banners available</p>
       </div>
     );
   }
 
   return (
-    <div className="relative mb-5 h-[400px] w-full overflow-hidden">
+    <div className="relative mb-5 h-[clamp(220px,42vw,400px)] w-full overflow-hidden">
       {images.map((src, index) => (
         <div
           key={`${src}-${index}`}

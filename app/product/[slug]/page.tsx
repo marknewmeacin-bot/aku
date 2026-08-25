@@ -1,7 +1,7 @@
 // ISR(CACHE) - 30 MINUTES
 
 import React from "react";
-import { Star, Minus, Plus, Clock, Award, Droplet, MapPin } from "lucide-react";
+import { Star, Minus, Plus } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -18,6 +18,7 @@ import { Metadata } from "next";
 import QtyButtons from "@/components/shared/product/QtyButtons";
 import Link from "next/link";
 import AddtoCartButton from "@/components/shared/product/AddtoCart";
+import ProductImage3D from "@/components/shared/product/ProductImage3D";
 import ProductCard from "@/components/shared/home/ProductCard";
 import { redirect } from "next/navigation";
 import IdInvalidError from "@/components/shared/IdInvalidError";
@@ -31,12 +32,12 @@ export async function generateMetadata({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const slug = (await params).slug;
-  const style = Number((await searchParams).style);
+  const style = Number((await searchParams).style) || 0;
   const size = Number((await searchParams).size) || 0;
   const product = await getSingleProduct(slug, style, size);
 
   return {
-    title: `Buy ${product.name} product | VibeCart`,
+    title: `Buy ${product.name} product | Aku`,
     description: product.description,
   };
 }
@@ -48,7 +49,7 @@ const ProductPage = async ({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
   const slug = (await params).slug;
-  const style = Number((await searchParams).style);
+  const style = Number((await searchParams).style) || 0;
   const size = Number((await searchParams).size) || 0;
   const sizeforButton = Number((await searchParams).size);
   const product = await getSingleProduct(slug, style, size);
@@ -101,10 +102,9 @@ const ProductPage = async ({
                 {images.map((imgSrc: string, index: number) => (
                   <CarouselItem key={index}>
                     <div className="p-1">
-                      <img
+                      <ProductImage3D
                         src={imgSrc}
                         alt={`Product Image ${index + 1}`}
-                        className="w-full sticky h-auto object-cover"
                       />
                     </div>
                   </CarouselItem>
@@ -198,24 +198,6 @@ const ProductPage = async ({
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-              {[
-                { icon: Clock, text: "LONG-LASTING" },
-                { icon: Award, text: "CERTIFIED" },
-                { icon: Droplet, text: "QUALITY CHECKED OILS" },
-                { icon: MapPin, text: "MADE IN INDIA" },
-              ].map(({ icon: Icon, text }, index) => (
-                <div
-                  className="flex flex-col items-center text-center bg-gray-100 px-1 py-8 justify-center"
-                  key={index}
-                >
-                  <div className="rounded-full">
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <span className="text-xs mt-2">{text}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
         <ProductDetailsAccordian

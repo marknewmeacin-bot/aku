@@ -4,7 +4,6 @@ import mongoose from "mongoose";
 import nodemailer from "nodemailer";
 import { render } from "react-email";
 import { redirect } from "next/navigation";
-import { unstable_cache } from "next/cache";
 
 import { connectToDatabase } from "../connect";
 import Order from "../models/order.model";
@@ -64,24 +63,28 @@ export async function createOrder(
       totalSaved,
     }).save();
 
-    const config = {
-      service: "gmail",
-      auth: {
-        user: "raghunadhwinwin@gmail.com",
-        pass: process.env.GOOGLE_APP_PASSWORD as string,
-      },
-    };
+    try {
+      const config = {
+        service: "gmail",
+        auth: {
+          user: "raghunadhwinwin@gmail.com",
+          pass: process.env.GOOGLE_APP_PASSWORD as string,
+        },
+      };
 
-    const transporter = nodemailer.createTransport(config);
+      const transporter = nodemailer.createTransport(config);
 
-    const emailData = {
-      from: config.auth.user,
-      to: user.email,
-      subject: "Order Confirmation - VibeCart",
-      html: await render(EmailTemplate(newOrder)),
-    };
+      const emailData = {
+        from: config.auth.user,
+        to: user.email,
+        subject: "Order Confirmation - Aku",
+        html: await render(EmailTemplate(newOrder)),
+      };
 
-    await transporter.sendMail(emailData);
+      await transporter.sendMail(emailData);
+    } catch (emailError) {
+      console.error("Order saved, but confirmation email failed:", emailError);
+    }
 
     return {
       message: "Successfully placed Order.",
@@ -100,8 +103,7 @@ export async function createOrder(
 }
 
 // Get order details by ID
-export const getOrderDetailsById = unstable_cache(
-  async (orderId: string) => {
+export const getOrderDetailsById = async (orderId: string) => {
     try {
       if (!ObjectId.isValid(orderId)) {
         redirect("/");
@@ -138,9 +140,4 @@ export const getOrderDetailsById = unstable_cache(
         orderData: [],
       };
     }
-  },
-  ["order_details"],
-  {
-    revalidate: 300,
-  }
-);
+};

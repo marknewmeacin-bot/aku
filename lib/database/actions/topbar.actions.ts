@@ -2,11 +2,9 @@
 import { connectToDatabase } from "../connect";
 import { handleError } from "@/lib/utils";
 import TopBar from "../models/topbar.model";
-import { unstable_cache } from "next/cache";
 
 // fetch all top bars for this project
-export const getAllTopBars = unstable_cache(
-  async () => {
+export async function getAllTopBars() {
     try {
       await connectToDatabase();
       const topbars = await TopBar.find({}).sort({ updateAt: -1 }).lean();
@@ -25,9 +23,4 @@ export const getAllTopBars = unstable_cache(
     } catch (error) {
       handleError(error);
     }
-  },
-  ["topbar"],
-  {
-    revalidate: 1800,
-  }
-);
+}

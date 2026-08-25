@@ -5,11 +5,12 @@ import { hamburgerMenuState } from "../store";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Menu, Package, Truck, User } from "lucide-react";
+import Link from "next/link";
 
 const MobileHamBurgerMenu = ({
   navItems,
 }: {
-  navItems: { name: string; icon: any; hasSubmenu?: boolean }[];
+  navItems: { name: string; href: string; icon: any; hasSubmenu?: boolean }[];
 }) => {
   const [hamMenuOpen, setHamMenuOpen] = useAtom(hamburgerMenuState, {
     store: useStore(),
@@ -61,8 +62,10 @@ const MobileHamBurgerMenu = ({
         </div>
         <div className="space-y-4">
           {navItems.map((item) => (
-            <div
+            <Link
               key={item.name}
+              href={item.href}
+              onClick={() => setHamMenuOpen(false)}
               className="flex items-center justify-between py-2 border-b border-b-gray-300"
             >
               <div className="flex items-center space-x-4">
@@ -70,7 +73,7 @@ const MobileHamBurgerMenu = ({
                 <span className="font-medium">{item.name}</span>
               </div>
               {item.hasSubmenu && <ChevronRight size={20} />}
-            </div>
+            </Link>
           ))}
         </div>
         <div className="mt-6 bg-green-500 p-4 rounded-lg">

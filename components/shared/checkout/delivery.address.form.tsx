@@ -5,6 +5,8 @@ import { useFormStatus } from "react-dom";
 
 const DeliveryAddressForm = ({ form }: { form: any }) => {
   const { pending } = useFormStatus();
+  const FieldError = ({ error }: { error?: string }) =>
+    error ? <p className="mt-1 text-sm text-red-500">{error}</p> : null;
 
   return (
     <div>
@@ -18,6 +20,7 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
             {...form.getInputProps("firstName")}
             required
           />
+          <FieldError error={form.errors.firstName} />
         </div>
         <div>
           <label htmlFor="lastName">Last Name</label>
@@ -27,6 +30,7 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
             {...form.getInputProps("lastName")}
             required
           />
+          <FieldError error={form.errors.lastName} />
         </div>
       </div>
       <div>
@@ -37,6 +41,7 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
           {...form.getInputProps("phoneNumber")}
           required
         />
+        <FieldError error={form.errors.phoneNumber} />
       </div>
       <div>
         <label htmlFor="state">State</label>
@@ -46,6 +51,7 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
           {...form.getInputProps("state")}
           required
         />
+        <FieldError error={form.errors.state} />
       </div>
       <div>
         <label htmlFor="city">City</label>
@@ -55,6 +61,7 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
           {...form.getInputProps("city")}
           required
         />
+        <FieldError error={form.errors.city} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -65,6 +72,7 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
             {...form.getInputProps("zipCode")}
             required
           />
+          <FieldError error={form.errors.zipCode} />
         </div>
       </div>
       <div>
@@ -75,6 +83,7 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
           {...form.getInputProps("address1")}
           required
         />
+        <FieldError error={form.errors.address1} />
       </div>
       <div>
         <label htmlFor="address2">Address 2</label>
@@ -82,8 +91,8 @@ const DeliveryAddressForm = ({ form }: { form: any }) => {
           id="address2"
           placeholder="Address 2"
           {...form.getInputProps("address2")}
-          required
         />
+        <FieldError error={form.errors.address2} />
       </div>
       <div>
         <label htmlFor="country">Country</label>

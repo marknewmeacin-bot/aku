@@ -72,7 +72,9 @@ const Card = ({ product, shop }: { product: Product; shop?: boolean }) => {
       </div>
       <div className="flex items-center gap-2 mb-4">
         <span className="font-semibold text-[13px] sm:text-sm">
-          {product.prices.length === 1
+          {product.prices.length === 0
+            ? "Price unavailable"
+            : product.prices.length === 1
             ? `₹${
                 product.prices[0] - (product.prices[0] * product.discount) / 100
               }`
@@ -89,7 +91,7 @@ const Card = ({ product, shop }: { product: Product; shop?: boolean }) => {
         </span> */}
       </div>
       {!shop && (
-        <Link href={`/product/${product.id}`}>
+        <Link href={`/product/${product.slug}?style=0`}>
           <Button className="w-full bg-black text-white hover:bg-gray-800">
             VIEW PRODUCT
           </Button>
@@ -131,10 +133,11 @@ const ProductCard = ({
       {!shop && (
         <div className="flex justify-center mt-8">
           <Button
+            asChild
             variant={"outline"}
             className="w-[90%] sm:w-[347px] border-2 border-black textGap px-[10px] py-[20px]"
           >
-            VIEW ALL
+            <Link href="/shop">VIEW ALL</Link>
           </Button>
         </div>
       )}

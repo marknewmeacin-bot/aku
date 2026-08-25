@@ -39,7 +39,7 @@ export default function Footer() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-5">
         {/* Brand */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">AKU</h2>
+          <h2 className="text-2xl font-bold">Aku</h2>
 
           <p className="text-sm">
             8569 Bond Rd, Elk Grove, California, 95624, United States.

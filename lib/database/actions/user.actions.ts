@@ -211,19 +211,13 @@ export async function saveAddress(
       };
     }
 
-    if (!Array.isArray(user.address)) {
-      user.address = [];
-    }
-
-    user.address.push(address);
+    user.address = address;
 
     await user.save();
 
     return {
       success: true,
-      addresses: JSON.parse(
-        JSON.stringify(user.address)
-      ),
+      address: JSON.parse(JSON.stringify(user.address)),
     };
   } catch (error) {
     handleError(error);

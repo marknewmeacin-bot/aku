@@ -1,11 +1,6 @@
-import { RiDiscountPercentFill } from "react-icons/ri";
 import { LuStore } from "react-icons/lu";
-import { GrLike } from "react-icons/gr";
-import { GiPerfumeBottle } from "react-icons/gi";
-import { FaBath } from "react-icons/fa";
-import { PiHighlighterCircleBold } from "react-icons/pi";
-import { MdFace4 } from "react-icons/md";
 import Link from "next/link";
+import Image from "next/image";
 import CartDrawer from "./CartDrawer";
 import MobileHamBurgerMenu from "./mobile/hamburgerMenu";
 import NavbarInput from "./NavbarInput";
@@ -13,43 +8,7 @@ import AccountDropDown from "@/components/shared/navbar/AccountDropDown";
 
 const Navbar = () => {
   const navItems = [
-    { name: "CRAZY DEALS", icon: <RiDiscountPercentFill size={24} /> },
-    { name: "SHOP ALL", icon: <LuStore size={24} /> },
-    { name: "BESTSELLERS", icon: <GrLike size={24} /> },
-    {
-      name: "PERFUMES",
-      icon: <GiPerfumeBottle size={24} />,
-      hasSubmenu: true,
-      submenu: [
-        { name: "Men's Perfume" },
-        { name: "Women's Perfume" },
-        { name: "Unisex Perfume" },
-        { name: "New Arrivals" },
-      ],
-    },
-    {
-      name: "BATH & BODY",
-      icon: <FaBath size={24} />,
-      hasSubmenu: true,
-      submenu: [
-        { name: "Shower Gel" },
-        { name: "Body Lotion" },
-        { name: "Hand Cream" },
-        { name: "Body Scrub" },
-      ],
-    },
-    { name: "MAKEUP", icon: <PiHighlighterCircleBold size={24} /> },
-    {
-      name: "SKINCARE",
-      icon: <MdFace4 size={24} />,
-      hasSubmenu: true,
-      submenu: [
-        { name: "Cleansers" },
-        { name: "Moisturizers" },
-        { name: "Serums" },
-        { name: "Sunscreen" },
-      ],
-    },
+    { name: "SHOP ALL", href: "/shop", icon: <LuStore size={24} /> },
   ];
 
   return (
@@ -65,9 +24,15 @@ const Navbar = () => {
           </div>
 
           <div className="flex-1 flex items-center justify-center lg:w-1/3">
-            <Link href={"/"}>
-              {" "}
-              <h1 className="text-2xl font-bold">VIBECART</h1>
+            <Link href={"/"} className="flex items-center gap-2 whitespace-nowrap">
+              <Image
+                src="/images/logo.png"
+                alt="Aku logo"
+                width={32}
+                height={32}
+                className="shrink-0 rounded-full object-cover"
+              />
+              <h1 className="leading-none text-2xl font-bold">Aku</h1>
             </Link>
           </div>
 
@@ -89,7 +54,7 @@ const Navbar = () => {
             {navItems.map((item) => (
               <Link
                 key={item.name}
-                href="#"
+                href={item.href}
                 className="text-sm font-medium text-gray-700 hover:text-gray-900 group transition duration-300"
               >
                 {item.name}

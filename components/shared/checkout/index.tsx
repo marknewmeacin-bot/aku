@@ -253,7 +253,17 @@ export default function CheckoutComponent() {
         user._id
       );
 
-      setAddress(res?.addresses || values);
+      if (!res?.success) {
+        toast.error(res?.message || "Failed to save address.");
+        return;
+      }
+
+      const savedAddress = res?.address || values;
+      setAddress(savedAddress);
+      setUser((currentUser: any) => ({
+        ...currentUser,
+        address: savedAddress,
+      }));
 
       toast.success("Successfully added address.");
 
@@ -452,6 +462,7 @@ export default function CheckoutComponent() {
           {/* STEP 1 */}
           {step === 1 && (
             <form
+              id="billing-address-form"
               onSubmit={form.onSubmit(
                 handleAddressSubmit
               )}
@@ -512,7 +523,9 @@ export default function CheckoutComponent() {
 
             {step < 3 && (
               <Button
-                onClick={nextStep}
+                type={step === 1 ? "submit" : "button"}
+                form={step === 1 ? "billing-address-form" : undefined}
+                onClick={step === 1 ? undefined : nextStep}
                 className="ml-auto"
               >
                 Continue
@@ -538,7 +551,7 @@ export default function CheckoutComponent() {
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="w-20 h-20 object-cover"
+                      className="h-16 w-16 shrink-0 object-cover sm:h-20 sm:w-20"
                     />
 
                     <div>

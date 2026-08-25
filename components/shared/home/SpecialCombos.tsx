@@ -16,12 +16,13 @@ const SpecialCombos = ({ comboData }: { comboData: SpecialComboDataType }) => {
           {comboData.offers.map((combo) => (
             <div
               key={combo._id}
-              className="flex-shrink-0 w-[80vw] sm:w-[347px]"
+              className="w-[min(80vw,347px)] flex-shrink-0 sm:w-[min(30vw,347px)]"
             >
               <img
-                src={combo.images[0].url}
+                src={combo.images?.[0]?.url || ""}
                 alt={combo.title}
-                className="w-full h-auto object-cover"
+                className="block h-auto max-h-[60vh] w-full max-w-full object-contain"
+                loading="lazy"
               />
               <p className="text-center uppercase textGap font-[500]">
                 {combo.title}
