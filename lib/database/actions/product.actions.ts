@@ -592,3 +592,48 @@ export async function getAllFeaturedProducts() {
       handleError(error);
     }
 }
+
+// ============================================================
+// SET FEATURED PRODUCT
+// ============================================================
+
+export async function setProductFeatured(
+  productId: string,
+  featured: boolean
+) {
+  try {
+    await connectToDatabase();
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return {
+        success: false,
+        message: "Invalid product ID.",
+      };
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      { $set: { featured } },
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!product) {
+      return {
+        success: false,
+        message: "Product not found.",
+      };
+    }
+
+    revalidateTag("product", "max");
+
+    return {
+      success: true,
+      featured: product.featured,
+      message: featured
+        ? "Product added to featured products."
+        : "Product removed from featured products.",
+    };
+  } catch (error) {
+    handleError(error);
+  }
+}
