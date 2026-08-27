@@ -234,7 +234,7 @@ export default function MyProfileComponent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0 m-0 sm:p-auto sm:m-auto">
-                  <UserProfile />
+                  <UserProfile routing="hash" />
                 </CardContent>
               </Card>
             </TabsContent>

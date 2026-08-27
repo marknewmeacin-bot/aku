@@ -41,7 +41,7 @@ export async function getTopSellingProducts() {
 
       const products = await Product.find()
         .sort({ "subProduct.sold": -1 })
-        .limit(4)
+        .limit(6)
         .lean();
 
       if (!products.length) {
@@ -74,7 +74,7 @@ export async function getNewArrivalProducts() {
 
       const products = await Product.find()
         .sort({ createdAt: -1 })
-        .limit(4)
+        .limit(6)
         .lean();
 
       if (!products.length) {

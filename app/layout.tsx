@@ -19,8 +19,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Aku - Shop any that fits you!",
-  description: "Online Shopping Site for to shop scents that fits you!",
+  title: "Aku - Online shopping for men's, women's, food, and more",
+  description: "Online Shopping Site for to shop stuff that fits you!",
 };
 
 export default function RootLayout({

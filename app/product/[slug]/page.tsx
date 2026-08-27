@@ -99,8 +99,11 @@ const ProductPage = async ({
           <div className="w-full lg:w-1/2 lg:sticky top-[1rem] self-start">
             <Carousel className="w-full">
               <CarouselContent>
-                {images.map((imgSrc: string, index: number) => (
-                  <CarouselItem key={index}>
+                {images.slice(0, 6).map((imgSrc: string, index: number) => (
+                  <CarouselItem
+                    key={index}
+                    className={index >= 2 ? "hidden sm:block" : undefined}
+                  >
                     <div className="p-1">
                       <ProductImage3D
                         src={imgSrc}
