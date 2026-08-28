@@ -1,20 +1,19 @@
 "use server";
 
-import mongoose from "mongoose";
-import nodemailer from "nodemailer";
-import { render } from "react-email";
-import { redirect } from "next/navigation";
-
 import { connectToDatabase } from "../connect";
 import Order from "../models/order.model";
 import User from "../models/user.model";
-
+import nodemailer from "nodemailer";
+import { render } from "@react-email/components";
 import EmailTemplate from "@/lib/emails/index";
 import { handleError } from "@/lib/utils";
-
+import mongoose from "mongoose";
+import { redirect } from "next/navigation";
+import { stripe } from "@/lib/stripe";
+import { unstable_cache } from "next/cache";
 const { ObjectId } = mongoose.Types;
 
-// Create an order
+// create an order
 export async function createOrder(
   products: {
     product: string;
@@ -22,10 +21,7 @@ export async function createOrder(
     image: string;
     size: string;
     qty: number;
-    color: {
-      color: string;
-      image: string;
-    };
+    color: { color: string; image: string };
     price: number;
     status: string;
     productCompletedAt: Date | null;
@@ -41,9 +37,7 @@ export async function createOrder(
 ) {
   try {
     await connectToDatabase();
-
     const user = await User.findById(userId);
-
     if (!user) {
       return {
         message: "User not found with provided ID!",
@@ -51,7 +45,6 @@ export async function createOrder(
         orderId: null,
       };
     }
-
     const newOrder = await new Order({
       user: user._id,
       products,
@@ -62,82 +55,136 @@ export async function createOrder(
       couponApplied,
       totalSaved,
     }).save();
-
-    try {
-      const config = {
-        service: "gmail",
-        auth: {
-          user: "raghunadhwinwin@gmail.com",
-          pass: process.env.GOOGLE_APP_PASSWORD as string,
-        },
+    const config = {
+      service: "gmail",
+      auth: {
+        user: "raghunadhwinwin@gmail.com",
+        pass: process.env.GOOGLE_APP_PASSWORD as string,
+      },
+    };
+    const transporter = nodemailer.createTransport(config);
+    const dataConfig = {
+      from: config.auth.user,
+      to: user.email,
+      subject: "Order Confirmation - VibeCart",
+      html: await render(EmailTemplate(newOrder)),
+    };
+    await transporter.sendMail(dataConfig).then(() => {
+      return {
+        message: "You Should revieve an email",
+        orderId: JSON.parse(JSON.stringify(newOrder._id)),
+        success: true,
       };
-
-      const transporter = nodemailer.createTransport(config);
-
-      const emailData = {
-        from: config.auth.user,
-        to: user.email,
-        subject: "Order Confirmation - Aku",
-        html: await render(EmailTemplate(newOrder)),
-      };
-
-      await transporter.sendMail(emailData);
-    } catch (emailError) {
-      console.error("Order saved, but confirmation email failed:", emailError);
-    }
-
+    });
     return {
       message: "Successfully placed Order.",
-      orderId: newOrder._id.toString(),
+      orderId: JSON.parse(JSON.stringify(newOrder._id)),
       success: true,
     };
   } catch (error) {
     handleError(error);
-
-    return {
-      message: "Failed to create order.",
-      orderId: null,
-      success: false,
-    };
   }
 }
 
-// Get order details by ID
-export const getOrderDetailsById = async (orderId: string) => {
+// get order details by its ID
+export const getOrderDetailsById = unstable_cache(
+  async (orderId: string) => {
     try {
       if (!ObjectId.isValid(orderId)) {
         redirect("/");
       }
-
       await connectToDatabase();
-
       const orderData = await Order.findById(orderId)
-        .populate({
-          path: "user",
-          model: User,
-        })
+        .populate({ path: "user", model: User })
         .lean();
-
       if (!orderData) {
         return {
           message: "Order not found with this ID!",
           success: false,
           orderData: [],
         };
+      } else {
+        return {
+          message: "Successfully grabbed data.",
+          success: true,
+          orderData: JSON.parse(JSON.stringify(orderData)),
+        };
       }
-
-      return {
-        message: "Successfully grabbed data.",
-        success: true,
-        orderData: JSON.parse(JSON.stringify(orderData)),
-      };
     } catch (error) {
       handleError(error);
-
-      return {
-        message: "Failed to fetch order details.",
-        success: false,
-        orderData: [],
-      };
     }
-};
+  },
+  ["order_details"],
+  {
+    revalidate: 300,
+  }
+);
+
+// create a stripe order instance
+export async function createStripeOrder(
+  products: {
+    product: string;
+    name: string;
+    image: string;
+    size: string;
+    qty: number;
+    color: { color: string; image: string };
+    price: number;
+    status: string;
+    productCompletedAt: Date | null;
+    _id: string;
+  }[],
+  shippingAddress: any,
+  paymentMethod: string,
+  total: number,
+  totalBeforeDiscount: number,
+  couponApplied: string,
+  userId: string,
+  totalSaved: number
+) {
+  await connectToDatabase();
+  const user = await User.findById(userId);
+  if (!user) {
+    return redirect("/sign-in");
+  }
+
+  const newOrder = await new Order({
+    user: user._id,
+    products,
+    shippingAddress,
+    paymentMethod,
+    total,
+    totalBeforeDiscount,
+    couponApplied,
+    totalSaved,
+  }).save();
+
+  const lineItems = products.map((item) => ({
+    price_data: {
+      currency: "inr",
+      unit_amount: item.price * 100,
+      product_data: {
+        name: item.name,
+        images: [item.image],
+      },
+    },
+    quantity: item.qty,
+  }));
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: lineItems,
+    success_url:
+      process.env.NODE_ENV === "development"
+        ? `http://localhost:3000/order/${newOrder._id}`
+        : `https://aku-h1v7-ten.vercel.app/order/${newOrder._id}`,
+    cancel_url:
+      process.env.NODE_ENV === "development"
+        ? `http://localhost:3000/payment/cancel`
+        : `https://aku-h1v7-ten.vercel.app/payment/cancel`,
+    metadata: { orderId: newOrder._id.toString() },
+  });
+
+  console.log("Stripe session URL:", session.url); // Verify URL in logs
+  return { sessionUrl: session.url };
+}
