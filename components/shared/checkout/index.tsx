@@ -45,8 +45,8 @@ export default function CheckoutComponent() {
     },
     validate: {
       firstName: (value) =>
-        value.trim().length < 6
-          ? "First name must be at least 6 letters"
+        value.trim().length < 4
+          ? "First name must be at least 4 letters"
           : null,
       lastName: (value) =>
         value.trim().length < 2 ? "Last name must be at least 2 letters" : null,
