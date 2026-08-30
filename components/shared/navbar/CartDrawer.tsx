@@ -20,8 +20,9 @@ import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart";
 import { saveCartForUser } from "@/lib/database/actions/cart.actions";
 import { FaArrowCircleRight } from "react-icons/fa";
-import { handleError } from "@/lib/utils";
+import { handleError, getErrorMessage } from "@/lib/utils";
 import CartSheetItems from "../cart/CartSheetItems";
+import { toast } from "sonner";
 
 const CartDrawer = () => {
   type CartItem = {
@@ -74,18 +75,31 @@ const CartDrawer = () => {
     if (userId && userId !== null) {
       setLoading(true);
 
-      await saveCartForUser(cart, userId)
-        .then((res) => {
-          if (res?.success) {
-            setLoading(false);
-            router.replace("/checkout");
-          }
-        })
-        .catch((err) => console.log(err));
+      try {
+        const res = await saveCartForUser(cart, userId);
+        if (res?.success) {
+          setLoading(false);
+          setCartMenuOpen(false);
+          router.push("/checkout");
+        } else {
+          setLoading(false);
+          toast.error(res?.message || "Failed to save cart");
+        }
+      } catch (err) {
+        setLoading(false);
+        toast.error(getErrorMessage(err) || "Error saving cart");
+        console.error(err);
+      }
     } else {
-      router.push("/sign-in?next=checkout");
+      router.push(`/sign-in?redirect_url=${encodeURIComponent("/checkout")}`);
     }
   };
+
+  const handleShopAllClick = () => {
+    setCartMenuOpen(false);
+    router.push("/shop");
+  };
+
   return (
     <div className="relative">
       <Sheet open={cartMenuOpen}>
@@ -114,12 +128,13 @@ const CartDrawer = () => {
                     {" "}
                     Your Cart is empty
                   </h1>
-                  <Link href={"/shop"}>
-                    <Button className="flex justify-center items-center w-full gap-[10px]">
-                      Shop All
-                      <FaArrowCircleRight />
-                    </Button>
-                  </Link>
+                  <Button
+                    onClick={handleShopAllClick}
+                    className="flex justify-center items-center w-full gap-[10px]"
+                  >
+                    Shop All
+                    <FaArrowCircleRight />
+                  </Button>
                 </div>
               </div>
             ) : (

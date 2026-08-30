@@ -1,6 +1,8 @@
 import { connectToDatabase } from "@/lib/database/connect";
 import Order from "@/lib/database/models/order.model";
+import User from "@/lib/database/models/user.model";
 import { stripe } from "@/lib/stripe";
+import { sendOrderConfirmationEmail } from "@/lib/database/actions/order.actions";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 export async function POST(req: Request) {
@@ -23,14 +25,29 @@ export async function POST(req: Request) {
   }
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    if (!session.metadata?.orderId) {
+    const orderId = session.metadata?.orderId;
+
+    if (!orderId) {
       return new Response(null, { status: 503 });
     }
+
     await connectToDatabase();
-    const order = await Order.findById(session.metadata?.orderId);
+    const order = await Order.findById(orderId).populate({
+      path: "user",
+      model: User,
+    });
+
+    if (!order) {
+      console.error("Stripe checkout completed but order was not found:", orderId);
+      return new Response(null, { status: 404 });
+    }
+
     order.isPaid = true;
-    order.paidAt = Date.now();
+    order.paidAt = new Date();
+    order.status = "confirmed";
     await order.save();
+
+    await sendOrderConfirmationEmail(order);
   } else {
     console.log("unhandled event");
   }

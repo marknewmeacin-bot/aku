@@ -182,7 +182,9 @@ export async function getSavedCartForUser(clerkId: string) {
       success: true,
       user: JSON.parse(JSON.stringify(user)),
       cart: JSON.parse(JSON.stringify(cart)),
-      address: JSON.parse(JSON.stringify(user.address ?? {})),
+      address: JSON.parse(
+        JSON.stringify(user.billingAddress ?? user.address ?? {})
+      ),
     };
   } catch (error) {
     handleError(error);

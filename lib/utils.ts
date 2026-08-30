@@ -5,16 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function handleError(error: unknown): never {
+export function handleError(error: unknown): string {
   if (error instanceof Error) {
-    throw new Error(`Error: ${error.message}`);
+    console.error(`Error: ${error.message}`);
+    return error.message;
   }
 
   if (typeof error === "string") {
-    throw new Error(`Error: ${error}`);
+    console.error(`Error: ${error}`);
+    return error;
   }
 
-  throw new Error("Unknown error occurred");
+  console.error("Unknown error occurred", error);
+  return "Unknown error occurred";
 }
 
 export function getErrorMessage(error: unknown): string {

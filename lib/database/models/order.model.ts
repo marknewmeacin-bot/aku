@@ -125,6 +125,11 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "shipped", "delivered"],
+      default: "confirmed",
+    },
   },
   {
     timestamps: true,

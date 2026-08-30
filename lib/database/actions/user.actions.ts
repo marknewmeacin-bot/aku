@@ -280,7 +280,13 @@ export async function saveAddress(
       };
     }
 
-    user.address = address;
+    const normalizedAddress = {
+      ...(address ?? {}),
+      active: true,
+    };
+
+    user.address = normalizedAddress;
+    user.billingAddress = normalizedAddress;
 
     await user.save();
 
@@ -288,7 +294,7 @@ export async function saveAddress(
       success: true,
       message: "Address saved successfully.",
       address: JSON.parse(
-        JSON.stringify(user.address)
+        JSON.stringify(user.billingAddress ?? user.address)
       ),
     };
   } catch (error) {

@@ -25,10 +25,6 @@ const OrderedProductDetailedView = ({ item }: { item: any }) => {
       icon: <TruckIcon className="h-6 w-6 text-indigo-500" />,
     },
     {
-      name: "Cancelled",
-      icon: <XCircleIcon className="h-6 w-6 text-gray-400" />,
-    },
-    {
       name: "Completed",
       icon: <CheckCircleIcon className="h-6 w-6 text-green-500" />,
     },
@@ -49,8 +45,6 @@ const OrderedProductDetailedView = ({ item }: { item: any }) => {
                     ? "bg-[#54b7d3]"
                     : item.status === "Dispatched"
                     ? "bg-[#1e91cf]"
-                    : item.status === "Cancelled"
-                    ? "bg-[#e3d4d4]"
                     : item.status === "Completed"
                     ? "bg-green-500"
                     : ""
@@ -64,8 +58,6 @@ const OrderedProductDetailedView = ({ item }: { item: any }) => {
                     ? "bg-[#54b7d3]"
                     : item.status === "Dispatched"
                     ? "bg-[#1e91cf]"
-                    : item.status === "Cancelled"
-                    ? "bg-[#e3d4d4]"
                     : item.status === "Completed"
                     ? "bg-green-500"
                     : ""
@@ -75,13 +67,6 @@ const OrderedProductDetailedView = ({ item }: { item: any }) => {
           </div>
           <div className="text-[10px] sm:text-[15px]">{item.status}</div>
         </div>
-        {item.status === "Not Processed" && (
-          <div className="flex justify-end self-end ">
-            <Button className="text-[10px] sm:text-[15px]" variant={"ghost"}>
-              Cancel this product
-            </Button>
-          </div>
-        )}
         <Button onClick={() => setOpen(!open)} variant={"ghost"} className="">
           {open ? <FaChevronCircleUp /> : <FaChevronCircleDown />}
         </Button>

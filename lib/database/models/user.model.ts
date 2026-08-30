@@ -76,6 +76,48 @@ const UserSchema = new Schema(
         default: true,
       },
     },
+    billingAddress: {
+      firstName: {
+        type: String,
+        default: "",
+      },
+      lastName: {
+        type: String,
+        default: "",
+      },
+      phoneNumber: {
+        type: String,
+        default: "",
+      },
+      address1: {
+        type: String,
+        default: "",
+      },
+      address2: {
+        type: String,
+        default: "",
+      },
+      city: {
+        type: String,
+        default: "",
+      },
+      state: {
+        type: String,
+        default: "",
+      },
+      zipCode: {
+        type: String,
+        default: "",
+      },
+      country: {
+        type: String,
+        default: "",
+      },
+      active: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
   {
     timestamps: true,

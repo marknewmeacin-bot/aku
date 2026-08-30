@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import { ObjectId } from "mongodb";
 import { Metadata } from "next";
 import IdInvalidError from "@/components/shared/IdInvalidError";
+import ClearCartOnOrderSuccess from "@/components/shared/order/ClearCartOnOrderSuccess";
 export const metadata: Metadata = {
-  title: "Order Page | VibeCart",
+  title: "Order Page | Aku",
   description: "View All of your Order Details.",
 };
 
@@ -34,13 +35,11 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
     .toUpperCase();
   return (
     <div className="min-h-screen bg-gray-100">
+      <ClearCartOnOrderSuccess paymentMethod={orderData?.orderData.paymentMethod} />
       <div className="max-w-full mx-auto bg-white shadow-md">
         <div className="p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center mb-4">
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              <span className="text-sm font-medium">Home</span>
-            </div>
+            <div className="mb-4" aria-hidden="true" />
 
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold capitalize">
@@ -49,6 +48,26 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
               <p className="text-gray-600">
                 Order ID: {orderData?.orderData._id}
               </p>
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+                {(() => {
+                  const status = orderData?.orderData.status || "confirmed";
+                  const statusDisplay =
+                    status.charAt(0).toUpperCase() + status.slice(1);
+                  return (
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        status === "delivered"
+                          ? "bg-green-100 text-green-800"
+                          : status === "shipped"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {statusDisplay}
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
             {/* Order Details Section */}
             <div className="mb-6 border rounded-lg overflow-hidden">
@@ -92,12 +111,9 @@ const OrderPage = async ({ params }: { params: Promise<{ id: string }> }) => {
                 <div className="flex items-center mb-4">
                   <CheckCircle2 className="w-[50px] h-[50px] text-green-500 mr-2 flex-shrink-0" />
                   <div>
-                    <h2 className="text-xl font-semibold">
-                      Your order is confirmed
-                    </h2>
+                    <h2 className="text-xl font-semibold">Your order is confirmed</h2>
                     <p className="text-gray-600">
-                      Order will be delivered to you in 2-3 days on following
-                      address
+                      Order will be delivered to you in 2-3 days on following address
                     </p>
                   </div>
                 </div>

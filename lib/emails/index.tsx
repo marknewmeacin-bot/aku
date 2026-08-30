@@ -1,4 +1,4 @@
-import { Html } from "react-email";
+import { Html } from "@react-email/components";
 import * as React from "react";
 
 export default function EmailTemplate(orderData: any) {

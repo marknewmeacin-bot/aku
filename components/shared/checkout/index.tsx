@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CreditCard,
   CheckCircle,
@@ -79,6 +79,7 @@ type UserAddress = {
 type UserData = {
   _id?: string;
   address?: UserAddress;
+  billingAddress?: UserAddress;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -127,6 +128,9 @@ export default function CheckoutComponent() {
   const [discount, setDiscount] = useState(0);
 
   const [subTotal, setSubtotal] = useState(0);
+
+  const checkoutLoadedRef = useRef(false);
+  const formRef = useRef<any>(null);
 
   const [placeOrderLoading, setPlaceOrderLoading] =
     useState(false);
@@ -191,12 +195,36 @@ export default function CheckoutComponent() {
     },
   });
 
+  const setSavedAddressToForm = (
+    savedAddress: UserAddress | null
+  ) => {
+    if (!savedAddress || !formRef.current) return;
+
+    formRef.current.setValues({
+      firstName: savedAddress.firstName ?? "",
+      lastName: savedAddress.lastName ?? "",
+      phoneNumber: savedAddress.phoneNumber ?? "",
+      state: savedAddress.state ?? "",
+      city: savedAddress.city ?? "",
+      zipCode: savedAddress.zipCode ?? "",
+      address1: savedAddress.address1 ?? "",
+      address2: savedAddress.address2 ?? "",
+      country: savedAddress.country ?? "",
+    });
+  };
+
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
   /* ------------------------------------------------------------------------ */
   /* Load Checkout Data                                                       */
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || checkoutLoadedRef.current) return;
+
+    checkoutLoadedRef.current = true;
 
     const loadCheckout = async () => {
       try {
@@ -210,9 +238,17 @@ export default function CheckoutComponent() {
           ),
         });
 
-        setUser(result?.user ?? null);
+        const userData = result?.user ?? null;
+        setUser(userData);
 
-        setAddress(result?.address ?? null);
+        const savedAddress =
+          userData?.billingAddress ??
+          userData?.address ??
+          result?.address ??
+          null;
+
+        setAddress(savedAddress);
+        setSavedAddressToForm(savedAddress);
       } catch (error) {
         console.error(
           "Error loading checkout:",
@@ -227,26 +263,6 @@ export default function CheckoutComponent() {
 
     loadCheckout();
   }, [userId]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Load Saved Address                                                       */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    if (!address) return;
-
-    form.setValues({
-      firstName: address.firstName ?? "",
-      lastName: address.lastName ?? "",
-      phoneNumber: address.phoneNumber ?? "",
-      state: address.state ?? "",
-      city: address.city ?? "",
-      zipCode: address.zipCode ?? "",
-      address1: address.address1 ?? "",
-      address2: address.address2 ?? "",
-      country: address.country ?? "",
-    });
-  }, [address, form]);
 
   /* ------------------------------------------------------------------------ */
   /* Rehydrate Cart                                                           */
@@ -500,6 +516,8 @@ export default function CheckoutComponent() {
           return;
         }
 
+        // Do not clear the cart here. The order is only truly complete
+        // after Stripe confirms the payment and redirects back.
         window.location.href =
           response.sessionUrl;
 
@@ -527,7 +545,10 @@ export default function CheckoutComponent() {
         return;
       }
 
-      emptyCart();
+      // Clear cart only when the COD order is actually saved successfully.
+      if (response.orderId) {
+        emptyCart();
+      }
 
       router.replace(
         `/order/${response.orderId}`
@@ -962,3 +983,4 @@ export default function CheckoutComponent() {
     </div>
   );
 }
+

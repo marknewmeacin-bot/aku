@@ -70,34 +70,38 @@ export default function MyProfileComponent() {
   });
 
   useEffect(() => {
-    if (userId) {
-      getUserById(userId).then((res) => {
-        if (res?.success) {
-          setUser({
-            ...user,
-            name: res.user.username,
-            email: res.user.email,
-            avatar: res.user.image,
-            id: res.user._id,
-          });
-        } else {
-          console.log(res?.message);
-          toast.error(res?.message);
-        }
-      });
-    }
+    if (!userId) return;
+
+    getUserById(userId).then((res) => {
+      if (res?.success) {
+        setUser((prev) => ({
+          ...prev,
+          name: res.user.username,
+          email: res.user.email,
+          avatar: res.user.image,
+          id: res.user._id,
+        }));
+      } else {
+        console.log(res?.message);
+        toast.error(res?.message);
+      }
+    });
   }, [userId]);
 
   useEffect(() => {
-    if (userId) {
-      getSavedCartForUser(userId)
-        .then((res) => {
-          setAddress(res?.address);
-        })
-        .catch((err) => {
-          toast.error(getErrorMessage(err));
-        });
-    }
+    if (!userId) return;
+
+    getUserById(userId)
+      .then((res) => {
+        if (res?.success) {
+          const savedAddress =
+            res.user?.billingAddress ?? res.user?.address ?? {};
+          setAddress(savedAddress);
+        }
+      })
+      .catch((err) => {
+        toast.error(getErrorMessage(err));
+      });
   }, [userId]);
 
   const form = useForm({
@@ -124,37 +128,39 @@ export default function MyProfileComponent() {
           ? "Phone number must contain 10 digits"
           : null,
       state: (value) =>
-        value.length < 2 ? "State must be at least 2 letters" : null,
+        value.trim().length < 2 ? "State must be at least 2 letters" : null,
       city: (value) =>
-        value.length < 2 ? "City must be at least 2 letters" : null,
+        value.trim().length < 2 ? "City must be at least 2 letters" : null,
       zipCode: (value) =>
-        value.length < 6 ? "Zip Code must be at least 6 characters." : null,
+        value.trim().length < 6 ? "Zip Code must be at least 6 characters." : null,
       address1: (value) =>
-        value.length > 100
-          ? "Address 1 must be at least 100 characters."
+        value.trim().length < 3
+          ? "Address 1 must be at least 3 characters."
           : null,
       address2: (value) =>
-        value.length > 100
-          ? "Address 2 must be at least 100 characters."
+        value.trim().length > 0 && value.trim().length < 3
+          ? "Address 2 must be at least 3 characters if provided."
           : null,
+      country: (value) =>
+        value.trim().length < 2 ? "Country must be at least 2 letters" : null,
     },
   });
   // form.setErrors({ firstName: "Too short", lastName: "Invalid email" });
 
   useEffect(() => {
-    if (address && Object.keys(address).length > 0) {
-      form.setValues({
-        firstName: address.firstName || "",
-        lastName: address.lastName || "",
-        phoneNumber: address.phoneNumber || "",
-        state: address.state || "",
-        city: address.city || "",
-        zipCode: address.zipCode || "",
-        address1: address.address1 || "",
-        address2: address.address2 || "",
-        country: address.country || "",
-      });
-    }
+    if (!address || Object.keys(address).length === 0) return;
+
+    form.setValues({
+      firstName: address.firstName || "",
+      lastName: address.lastName || "",
+      phoneNumber: address.phoneNumber || "",
+      state: address.state || "",
+      city: address.city || "",
+      zipCode: address.zipCode || "",
+      address1: address.address1 || "",
+      address2: address.address2 || "",
+      country: address.country || "",
+    });
   }, [address]);
 
   return (
@@ -289,6 +295,13 @@ export default function MyProfileComponent() {
                   <form
                     onSubmit={form.onSubmit(async (values) => {
                       try {
+                        if (!user.id) {
+                          toast.error(
+                            "Your account is still loading. Please wait a moment and try again."
+                          );
+                          return;
+                        }
+
                         const res = await saveAddress(
                           { ...values, active: true },
                           user.id
@@ -299,7 +312,17 @@ export default function MyProfileComponent() {
                           return;
                         }
 
-                        setAddress(res.address);
+                        const savedAddress = res.address ?? {
+                          ...values,
+                          active: true,
+                        };
+
+                        setAddress(savedAddress);
+                        setUser((prev) => ({
+                          ...prev,
+                          id: prev.id || user.id,
+                          address: savedAddress,
+                        }));
                         toast.success("Successfully updated address");
                       } catch (error) {
                         console.error(error);
@@ -392,8 +415,12 @@ export default function MyProfileComponent() {
                         required
                       />
                     </div>
-                    <Button type="submit" className="w-full">
-                      Save Address
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={!user.id}
+                    >
+                      {user.id ? "Save Address" : "Loading profile..."}
                     </Button>
                   </form>
                 </CardContent>

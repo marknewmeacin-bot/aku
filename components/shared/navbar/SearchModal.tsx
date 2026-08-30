@@ -11,7 +11,8 @@ import {
 import { getAllSubCategories } from "@/lib/database/actions/subCategory.actions";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { handleError } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { handleError, getErrorMessage } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 type SubCategory = {
@@ -20,6 +21,7 @@ type SubCategory = {
 };
 
 const SearchModal = ({ setOpen }: { setOpen: any }) => {
+  const router = useRouter();
   const [query, setQuery] = useState<string>("");
   const [products, setProducts] = useState([]);
   const [trendingSearches, setTrendingSearches] = useState<SubCategory[]>([]);
@@ -33,7 +35,7 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
             []
         );
       } catch (error) {
-        handleError(error);
+        toast.error(getErrorMessage(error));
       }
     }
 
@@ -48,11 +50,11 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
             console.log(res?.products);
           } else {
             setProducts(res?.products);
-            toast.error(res?.message);
+            toast.error(res?.message || "Failed to fetch products");
           }
         });
       } catch (error) {
-        handleError(error);
+        toast.error(getErrorMessage(error));
       }
     }
     fetchBestSellerProducts();
@@ -71,12 +73,19 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
           setLoading(false);
         }
       } catch (error) {
-        handleError(error);
+        toast.error(getErrorMessage(error));
+        setLoading(false);
       }
     }
 
     if (query.length > 0) fetchDataByQuery();
   }, [query.length]);
+
+  const handleNavigation = (path: string) => {
+    setOpen(false);
+    router.push(path);
+  };
+
   return (
     <Dialog>
       <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
@@ -106,14 +115,13 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
                   key={search._id}
                   variant={"outline"}
                   size={"sm"}
-                  asChild
+                  onClick={() =>
+                    handleNavigation(
+                      `/shop/subCategory/${search._id}?name=${encodeURIComponent(search.name)}`
+                    )
+                  }
                 >
-                  <Link
-                    href={`/shop/subCategory/${search._id}?name=${encodeURIComponent(search.name)}`}
-                    onClick={() => setOpen(false)}
-                  >
-                    {search.name}
-                  </Link>
+                  {search.name}
                 </Button>
               ))}
             </div>
@@ -130,7 +138,11 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
             <div className="flex space-x-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:space-x-0 sm:gap-2">
               {query.length > 0
                 ? products.map((product: any, index: number) => (
-                    <Link key={index} href={`/product/${product.slug}?style=0`}>
+                    <div
+                      key={index}
+                      className="cursor-pointer"
+                      onClick={() => handleNavigation(`/product/${product.slug}?style=0`)}
+                    >
                       <div className="space-y-2 min-w-[110px] flex-shrink-0 sm:min-w-0">
                         <div className="aspect-square relative">
                           <img
@@ -161,10 +173,14 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   ))
                 : products.map((product: any, index) => (
-                    <Link key={index} href={`/product/${product.slug}?style=0`}>
+                    <div
+                      key={index}
+                      className="cursor-pointer"
+                      onClick={() => handleNavigation(`/product/${product.slug}?style=0`)}
+                    >
                       <div className="space-y-2 min-w-[110px] flex-shrink-0 sm:min-w-0">
                         <div className="aspect-square relative">
                           <img
@@ -200,12 +216,11 @@ const SearchModal = ({ setOpen }: { setOpen: any }) => {
                                   ₹{product.subProducts[0]?.sizes[0]?.price}
                                 </div>
                               )}
-                              {/* ₹{product.subProducts[0]?.sizes[0]?.price} */}
                             </span>
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   ))}
             </div>
             {query.length > 0 && products.length === 0 && (
