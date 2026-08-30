@@ -56,7 +56,6 @@ type Product = {
   status: string;
   productCompletedAt: Date | null;
   _id: string;
-  saved?: number;
 };
 
 type CheckoutData = {
@@ -91,14 +90,10 @@ export default function CheckoutComponent() {
   const { userId } = useAuth();
 
   const cart = useCartStore(
-    (state: any) => state.cart.cartItems
+    (state: any) => state.cart.cartItems ?? []
   );
 
   const { emptyCart } = useCartStore();
-
-  /* ------------------------------------------------------------------------ */
-  /* State                                                                    */
-  /* ------------------------------------------------------------------------ */
 
   const [step, setStep] = useState(1);
 
@@ -108,12 +103,6 @@ export default function CheckoutComponent() {
   const [address, setAddress] =
     useState<UserAddress | null>(null);
 
-  /*
-   * IMPORTANT:
-   * products is ALWAYS an array.
-   * This fixes:
-   * "any[] | undefined is not assignable to Product[]"
-   */
   const [data, setData] = useState<CheckoutData>({
     products: [],
     cartTotal: 0,
@@ -126,10 +115,17 @@ export default function CheckoutComponent() {
   const [paymentMethod, setPaymentMethod] =
     useState("cod");
 
+  /*
+   * IMPORTANT:
+   * Keep this as NUMBER.
+   * createOrder() and createStripeOrder()
+   * expect a number.
+   */
   const [totalAfterDiscount, setTotalAfterDiscount] =
-    useState("");
+    useState<number | null>(null);
 
   const [discount, setDiscount] = useState(0);
+
   const [subTotal, setSubtotal] = useState(0);
 
   const [placeOrderLoading, setPlaceOrderLoading] =
@@ -202,7 +198,7 @@ export default function CheckoutComponent() {
   useEffect(() => {
     if (!userId) return;
 
-    const loadCheckoutData = async () => {
+    const loadCheckout = async () => {
       try {
         const result =
           await getSavedCartForUser(userId);
@@ -215,6 +211,7 @@ export default function CheckoutComponent() {
         });
 
         setUser(result?.user ?? null);
+
         setAddress(result?.address ?? null);
       } catch (error) {
         console.error(
@@ -228,7 +225,7 @@ export default function CheckoutComponent() {
       }
     };
 
-    loadCheckoutData();
+    loadCheckout();
   }, [userId]);
 
   /* ------------------------------------------------------------------------ */
@@ -252,22 +249,6 @@ export default function CheckoutComponent() {
   }, [address, form]);
 
   /* ------------------------------------------------------------------------ */
-  /* Calculate Subtotal                                                       */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    const total = cart.reduce(
-      (sum: number, item: any) =>
-        sum +
-        Number(item.price || 0) *
-          Number(item.qty || 0),
-      0
-    );
-
-    setSubtotal(Number(total.toFixed(2)));
-  }, [cart]);
-
-  /* ------------------------------------------------------------------------ */
   /* Rehydrate Cart                                                           */
   /* ------------------------------------------------------------------------ */
 
@@ -276,7 +257,25 @@ export default function CheckoutComponent() {
   }, []);
 
   /* ------------------------------------------------------------------------ */
-  /* Steps                                                                    */
+  /* Calculate Subtotal                                                       */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    const total = cart.reduce(
+      (sum: number, item: any) =>
+        sum +
+        Number(item.price ?? 0) *
+          Number(item.qty ?? 0),
+      0
+    );
+
+    setSubtotal(
+      Number(total.toFixed(2))
+    );
+  }, [cart]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Step Navigation                                                          */
   /* ------------------------------------------------------------------------ */
 
   const nextStep = () => {
@@ -339,15 +338,28 @@ export default function CheckoutComponent() {
         return;
       }
 
-      setTotalAfterDiscount(
-        result.totalAfterDiscount ?? ""
+      /*
+       * IMPORTANT:
+       * Convert server result to NUMBER.
+       */
+      const discountedTotal = Number(
+        result.totalAfterDiscount ?? 0
       );
 
-      setDiscount(result.discount ?? 0);
+      setTotalAfterDiscount(
+        discountedTotal
+      );
+
+      setDiscount(
+        Number(result.discount ?? 0)
+      );
+
       setCouponError("");
 
       toast.success(
-        `Applied ${result.discount ?? 0}% discount successfully.`
+        `Applied ${
+          result.discount ?? 0
+        }% discount successfully.`
       );
 
       nextStep();
@@ -374,17 +386,26 @@ export default function CheckoutComponent() {
   const totalSaved = cart.reduce(
     (total: number, item: any) =>
       total +
-      Number(item.saved || 0) *
-        Number(item.qty || 0),
+      Number(item.saved ?? 0) *
+        Number(item.qty ?? 0),
     0
   );
 
   const cartTotal = Number(
     subTotal + totalSaved
-  ).toFixed(0);
+  );
+
+  /*
+   * IMPORTANT:
+   * finalTotal is NUMBER.
+   */
+  const finalTotal =
+    totalAfterDiscount !== null
+      ? totalAfterDiscount
+      : Number(data.cartTotal ?? 0);
 
   /* ------------------------------------------------------------------------ */
-  /* Button State                                                             */
+  /* Button                                                                   */
   /* ------------------------------------------------------------------------ */
 
   const isDisabled =
@@ -425,7 +446,14 @@ export default function CheckoutComponent() {
         return;
       }
 
-      if (!user?.address?.firstName) {
+      if (!user?._id) {
+        toast.error(
+          "User information is not available."
+        );
+        return;
+      }
+
+      if (!user.address?.firstName) {
         toast.error(
           "Please fill in all billing address details."
         );
@@ -433,18 +461,24 @@ export default function CheckoutComponent() {
       }
 
       /*
-       * products is guaranteed to be Product[].
+       * products is ALWAYS an array now.
        * No more undefined error.
        */
       const products = data.products;
 
-      const finalTotal =
-        totalAfterDiscount ||
-        String(data.cartTotal);
+      /*
+       * All totals passed to the order functions
+       * are NUMBER values.
+       */
+      const orderTotal = Number(
+        finalTotal
+      );
 
-      /* -------------------------------------------------------------------- */
-      /* Stripe                                                               */
-      /* -------------------------------------------------------------------- */
+      const originalTotal = Number(
+        data.cartTotal ?? 0
+      );
+
+      /* ------------------------------- Stripe ------------------------------ */
 
       if (paymentMethod === "stripe") {
         const response =
@@ -452,11 +486,11 @@ export default function CheckoutComponent() {
             products,
             user.address,
             paymentMethod,
-            finalTotal,
-            data.cartTotal,
+            orderTotal,
+            originalTotal,
             coupon,
-            user._id!,
-            totalSaved
+            user._id,
+            Number(totalSaved)
           );
 
         if (!response?.sessionUrl) {
@@ -472,19 +506,17 @@ export default function CheckoutComponent() {
         return;
       }
 
-      /* -------------------------------------------------------------------- */
-      /* COD                                                                  */
-      /* -------------------------------------------------------------------- */
+      /* -------------------------------- COD --------------------------------- */
 
       const response = await createOrder(
         products,
         user.address,
         paymentMethod,
-        finalTotal,
-        data.cartTotal,
+        orderTotal,
+        originalTotal,
         coupon,
-        user._id!,
-        totalSaved
+        user._id,
+        Number(totalSaved)
       );
 
       if (!response?.success) {
@@ -517,6 +549,28 @@ export default function CheckoutComponent() {
   };
 
   /* ------------------------------------------------------------------------ */
+  /* Stepper Data                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  const steps = [
+    {
+      number: 1,
+      icon: MapPin,
+      label: "Delivery Address",
+    },
+    {
+      number: 2,
+      icon: Ticket,
+      label: "Apply Coupon",
+    },
+    {
+      number: 3,
+      icon: CreditCard,
+      label: "Choose Payment Method",
+    },
+  ];
+
+  /* ------------------------------------------------------------------------ */
   /* Render                                                                   */
   /* ------------------------------------------------------------------------ */
 
@@ -529,33 +583,15 @@ export default function CheckoutComponent() {
       <div className="flex flex-col gap-8 lg:flex-row">
 
         {/* ================================================================== */}
-        {/* LEFT SECTION                                                       */}
+        {/* Checkout                                                           */}
         {/* ================================================================== */}
 
         <div className="w-full lg:w-2/3">
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Stepper                                                          */}
-          {/* ---------------------------------------------------------------- */}
+          {/* Stepper */}
 
           <div className="mb-8 flex items-center justify-between">
-            {[
-              {
-                number: 1,
-                icon: MapPin,
-                label: "Delivery Address",
-              },
-              {
-                number: 2,
-                icon: Ticket,
-                label: "Apply Coupon",
-              },
-              {
-                number: 3,
-                icon: CreditCard,
-                label: "Choose Payment Method",
-              },
-            ].map((item, index) => {
+            {steps.map((item, index) => {
               const Icon = item.icon;
 
               return (
@@ -595,7 +631,7 @@ export default function CheckoutComponent() {
                     </span>
                   </div>
 
-                  {index < 2 && (
+                  {index < steps.length - 1 && (
                     <div
                       className={`mx-4 flex-1 border-t-2 ${
                         step > item.number
@@ -609,9 +645,9 @@ export default function CheckoutComponent() {
             })}
           </div>
 
-          {/* ---------------------------------------------------------------- */}
+          {/* ================================================================ */}
           {/* Step 1 - Address                                                 */}
-          {/* ---------------------------------------------------------------- */}
+          {/* ================================================================ */}
 
           {step === 1 && (
             <form
@@ -681,9 +717,9 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ---------------------------------------------------------------- */}
+          {/* ================================================================ */}
           {/* Step 2 - Coupon                                                  */}
-          {/* ---------------------------------------------------------------- */}
+          {/* ================================================================ */}
 
           {step === 2 && (
             <form
@@ -697,9 +733,9 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ---------------------------------------------------------------- */}
+          {/* ================================================================ */}
           {/* Step 3 - Payment                                                 */}
-          {/* ---------------------------------------------------------------- */}
+          {/* ================================================================ */}
 
           {step === 3 && (
             <div className="space-y-4">
@@ -738,9 +774,7 @@ export default function CheckoutComponent() {
             </div>
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Navigation                                                       */}
-          {/* ---------------------------------------------------------------- */}
+          {/* Navigation */}
 
           <div className="mt-6 flex justify-between">
             {step > 1 && (
@@ -766,7 +800,7 @@ export default function CheckoutComponent() {
         </div>
 
         {/* ================================================================== */}
-        {/* ORDER SUMMARY                                                      */}
+        {/* Order Summary                                                      */}
         {/* ================================================================== */}
 
         <div className="w-full self-start bg-gray-100 lg:sticky lg:top-4 lg:w-1/3">
@@ -831,7 +865,7 @@ export default function CheckoutComponent() {
                 </span>
 
                 <strong>
-                  ₹ {cartTotal}
+                  ₹ {cartTotal.toFixed(2)}
                 </strong>
               </div>
 
@@ -855,13 +889,13 @@ export default function CheckoutComponent() {
 
               <div className="flex justify-between text-lg font-semibold">
                 <span>
-                  {totalAfterDiscount
+                  {totalAfterDiscount !== null
                     ? "Total:"
                     : "Total before:"}
                 </span>
 
                 <span>
-                  ₹ {data.cartTotal}
+                  ₹ {data.cartTotal.toFixed(2)}
                 </span>
               </div>
 
@@ -881,16 +915,19 @@ export default function CheckoutComponent() {
 
               {/* Discounted Total */}
 
-              {totalAfterDiscount &&
-                Number(totalAfterDiscount) <
-                  Number(data.cartTotal) && (
+              {totalAfterDiscount !== null &&
+                totalAfterDiscount <
+                  data.cartTotal && (
                   <div className="flex justify-between p-2 text-lg">
                     <span>
                       Total after Discount:
                     </span>
 
                     <strong>
-                      ₹ {totalAfterDiscount}
+                      ₹{" "}
+                      {totalAfterDiscount.toFixed(
+                        2
+                      )}
                     </strong>
                   </div>
                 )}
