@@ -42,18 +42,16 @@ import ApplyCouponForm from "./apply.coupon.form";
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-type ProductColor = {
-  color: string;
-  image: string;
-};
-
 type CheckoutProduct = {
   product: string;
   name: string;
   image: string;
   size: string;
   qty: number;
-  color: ProductColor;
+  color: {
+    color: string;
+    image: string;
+  };
   price: number;
   status: string;
   productCompletedAt: Date | null;
@@ -61,26 +59,13 @@ type CheckoutProduct = {
 };
 
 type CheckoutData = {
-  products?: CheckoutProduct[];
-  cartTotal?: number;
-};
-
-type UserAddress = {
-  firstName?: string;
-  lastName?: string;
-  phoneNumber?: string;
-  state?: string;
-  city?: string;
-  zipCode?: string;
-  address1?: string;
-  address2?: string;
-  country?: string;
-  active?: boolean;
+  products: CheckoutProduct[];
+  cartTotal: number;
 };
 
 type UserData = {
   _id?: string;
-  address?: UserAddress;
+  address?: any;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -91,11 +76,19 @@ export default function CheckoutComponent() {
   const router = useRouter();
   const { userId } = useAuth();
 
+  /* ------------------------------------------------------------------------ */
+  /* Cart                                                                     */
+  /* ------------------------------------------------------------------------ */
+
   const cart = useCartStore(
     (state: any) => state.cart.cartItems
   );
 
   const { emptyCart } = useCartStore();
+
+  /* ------------------------------------------------------------------------ */
+  /* State                                                                    */
+  /* ------------------------------------------------------------------------ */
 
   const [step, setStep] = useState(1);
 
@@ -103,10 +96,13 @@ export default function CheckoutComponent() {
     useState<UserData | null>(null);
 
   const [address, setAddress] =
-    useState<UserAddress | null>(null);
+    useState<any>(null);
 
   const [data, setData] =
-    useState<CheckoutData>({});
+    useState<CheckoutData>({
+      products: [],
+      cartTotal: 0,
+    });
 
   const [coupon, setCoupon] =
     useState("");
@@ -117,10 +113,8 @@ export default function CheckoutComponent() {
   const [paymentMethod, setPaymentMethod] =
     useState("cod");
 
-  const [
-    totalAfterDiscount,
-    setTotalAfterDiscount,
-  ] = useState("");
+  const [totalAfterDiscount, setTotalAfterDiscount] =
+    useState("");
 
   const [discount, setDiscount] =
     useState(0);
@@ -128,14 +122,12 @@ export default function CheckoutComponent() {
   const [subTotal, setSubtotal] =
     useState(0);
 
-  const [
-    placeOrderLoading,
-    setPlaceOrderLoading,
-  ] = useState(false);
+  const [placeOrderLoading, setPlaceOrderLoading] =
+    useState(false);
 
-  /* -------------------------------------------------------------------------- */
-  /* Checkout Form                                                              */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Checkout Form                                                           */
+  /* ------------------------------------------------------------------------ */
 
   const form = useForm({
     initialValues: {
@@ -193,9 +185,9 @@ export default function CheckoutComponent() {
     },
   });
 
-  /* -------------------------------------------------------------------------- */
-  /* Load Checkout Data                                                         */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Load Checkout Data                                                       */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     if (!userId) return;
@@ -205,12 +197,19 @@ export default function CheckoutComponent() {
         const result =
           await getSavedCartForUser(userId);
 
-        setData(result?.cart ?? {});
+        setData({
+          products:
+            result?.cart?.products ?? [],
+          cartTotal: Number(
+            result?.cart?.cartTotal ?? 0
+          ),
+        });
+
         setUser(result?.user ?? null);
         setAddress(result?.address ?? null);
       } catch (error) {
         console.error(
-          "Error loading checkout:",
+          "Error loading checkout data:",
           error
         );
 
@@ -223,9 +222,9 @@ export default function CheckoutComponent() {
     loadCheckout();
   }, [userId]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Load Saved Address                                                         */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Load Saved Address                                                       */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     if (!address) return;
@@ -233,8 +232,7 @@ export default function CheckoutComponent() {
     form.setValues({
       firstName: address.firstName ?? "",
       lastName: address.lastName ?? "",
-      phoneNumber:
-        address.phoneNumber ?? "",
+      phoneNumber: address.phoneNumber ?? "",
       state: address.state ?? "",
       city: address.city ?? "",
       zipCode: address.zipCode ?? "",
@@ -242,19 +240,11 @@ export default function CheckoutComponent() {
       address2: address.address2 ?? "",
       country: address.country ?? "",
     });
-  }, [address, form]);
+  }, [address]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Rehydrate Cart                                                             */
-  /* -------------------------------------------------------------------------- */
-
-  useEffect(() => {
-    useCartStore.persist.rehydrate();
-  }, []);
-
-  /* -------------------------------------------------------------------------- */
-  /* Calculate Subtotal                                                         */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Calculate Subtotal                                                       */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     const total = cart.reduce(
@@ -270,16 +260,17 @@ export default function CheckoutComponent() {
     );
   }, [cart]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Safe Products Array                                                        */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Rehydrate Cart                                                           */
+  /* ------------------------------------------------------------------------ */
 
-  const products: CheckoutProduct[] =
-    data.products ?? [];
+  useEffect(() => {
+    useCartStore.persist.rehydrate();
+  }, []);
 
-  /* -------------------------------------------------------------------------- */
-  /* Step Navigation                                                            */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Step Navigation                                                          */
+  /* ------------------------------------------------------------------------ */
 
   const nextStep = () => {
     setStep((current) =>
@@ -293,17 +284,15 @@ export default function CheckoutComponent() {
     );
   };
 
-  const isCompleted = (
-    currentStep: number
-  ) => step > currentStep;
+  const isCompleted = (currentStep: number) =>
+    step > currentStep;
 
-  const isActive = (
-    currentStep: number
-  ) => step === currentStep;
+  const isActive = (currentStep: number) =>
+    step === currentStep;
 
-  /* -------------------------------------------------------------------------- */
-  /* Apply Coupon                                                               */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Apply Coupon                                                             */
+  /* ------------------------------------------------------------------------ */
 
   const applyCouponHandler = async (
     event: React.FormEvent<HTMLFormElement>
@@ -320,14 +309,11 @@ export default function CheckoutComponent() {
     const couponCode = coupon.trim();
 
     if (!couponCode) {
-      setCouponError(
-        "Please enter a coupon code."
-      );
+      const message =
+        "Please enter a coupon code.";
 
-      toast.error(
-        "Please enter a coupon code."
-      );
-
+      setCouponError(message);
+      toast.error(message);
       return;
     }
 
@@ -376,9 +362,9 @@ export default function CheckoutComponent() {
     }
   };
 
-  /* -------------------------------------------------------------------------- */
-  /* Cart Totals                                                                */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Cart Totals                                                              */
+  /* ------------------------------------------------------------------------ */
 
   const totalSaved = cart.reduce(
     (total: number, item: any) =>
@@ -392,9 +378,9 @@ export default function CheckoutComponent() {
     subTotal + totalSaved
   ).toFixed(0);
 
-  /* -------------------------------------------------------------------------- */
-  /* Place Order Button                                                         */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Place Order Button                                                       */
+  /* ------------------------------------------------------------------------ */
 
   const isDisabled =
     !paymentMethod ||
@@ -417,9 +403,9 @@ export default function CheckoutComponent() {
     return "Place Order with Stripe";
   };
 
-  /* -------------------------------------------------------------------------- */
-  /* Place Order                                                                */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Place Order                                                              */
+  /* ------------------------------------------------------------------------ */
 
   const placeOrderHandler = async () => {
     if (placeOrderLoading) return;
@@ -434,32 +420,35 @@ export default function CheckoutComponent() {
         return;
       }
 
-      if (!user?._id) {
-        toast.error(
-          "User information is not available."
-        );
-        return;
-      }
-
-      if (!user.address?.firstName) {
+      if (!user?.address?.firstName) {
         toast.error(
           "Please fill in all billing address details."
         );
         return;
       }
 
+      if (!user._id) {
+        toast.error(
+          "User information is not available."
+        );
+        return;
+      }
+
+      if (data.products.length === 0) {
+        toast.error("Your cart is empty.");
+        return;
+      }
+
       const finalTotal =
         totalAfterDiscount ||
-        String(data.cartTotal ?? 0);
+        String(data.cartTotal);
 
-      /* ---------------------------------------------------------------------- */
-      /* Stripe                                                                  */
-      /* ---------------------------------------------------------------------- */
+      /* Stripe */
 
       if (paymentMethod === "stripe") {
         const response =
           await createStripeOrder(
-            products,
+            data.products,
             user.address,
             paymentMethod,
             finalTotal,
@@ -482,13 +471,11 @@ export default function CheckoutComponent() {
         return;
       }
 
-      /* ---------------------------------------------------------------------- */
-      /* COD                                                                     */
-      /* ---------------------------------------------------------------------- */
+      /* COD */
 
       const response =
         await createOrder(
-          products,
+          data.products,
           user.address,
           paymentMethod,
           finalTotal,
@@ -503,7 +490,6 @@ export default function CheckoutComponent() {
           response?.message ||
             "Order creation failed."
         );
-
         return;
       }
 
@@ -528,9 +514,27 @@ export default function CheckoutComponent() {
     }
   };
 
-  /* -------------------------------------------------------------------------- */
-  /* Render                                                                     */
-  /* -------------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Render                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  const steps = [
+    {
+      number: 1,
+      icon: MapPin,
+      label: "Delivery Address",
+    },
+    {
+      number: 2,
+      icon: Ticket,
+      label: "Apply Coupon",
+    },
+    {
+      number: 3,
+      icon: CreditCard,
+      label: "Choose Payment Method",
+    },
+  ];
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -540,90 +544,72 @@ export default function CheckoutComponent() {
 
       <div className="flex flex-col gap-8 lg:flex-row">
 
-        {/* ================================================================== */}
-        {/* Checkout Section                                                   */}
-        {/* ================================================================== */}
+        {/* ================================================================ */}
+        {/* Checkout                                                          */}
+        {/* ================================================================ */}
 
         <div className="w-full lg:w-2/3">
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Stepper                                                           */}
-          {/* ---------------------------------------------------------------- */}
+          {/* Stepper */}
 
           <div className="mb-8 flex items-center justify-between">
-            {[
-              {
-                number: 1,
-                icon: MapPin,
-                label: "Delivery Address",
-              },
-              {
-                number: 2,
-                icon: Ticket,
-                label: "Apply Coupon",
-              },
-              {
-                number: 3,
-                icon: CreditCard,
-                label: "Choose Payment Method",
-              },
-            ].map((item, index) => (
-              <div
-                key={item.number}
-                className="flex flex-1 items-center"
-              >
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
-                      isActive(item.number)
-                        ? "border-primary bg-primary text-white"
-                        : isCompleted(
-                            item.number
-                          )
-                        ? "border-green-500 bg-green-500 text-white"
-                        : "border-gray-300 bg-gray-200 text-gray-500"
-                    }`}
-                  >
-                    {isCompleted(
-                      item.number
-                    ) ? (
-                      <CheckCircle className="h-5 w-5" />
-                    ) : (
-                      <item.icon className="h-5 w-5" />
-                    )}
+            {steps.map((item, index) => {
+              const Icon = item.icon;
+
+              return (
+                <div
+                  key={item.number}
+                  className="flex flex-1 items-center"
+                >
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
+                        isActive(item.number)
+                          ? "border-primary bg-primary text-white"
+                          : isCompleted(item.number)
+                          ? "border-green-500 bg-green-500 text-white"
+                          : "border-gray-300 bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {isCompleted(
+                        item.number
+                      ) ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        <Icon className="h-5 w-5" />
+                      )}
+                    </div>
+
+                    <span
+                      className={`mt-2 hidden text-sm lg:block ${
+                        isActive(item.number)
+                          ? "font-semibold text-primary"
+                          : isCompleted(item.number)
+                          ? "text-green-500"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
                   </div>
 
-                  <span
-                    className={`mt-2 hidden text-sm lg:block ${
-                      isActive(item.number)
-                        ? "font-semibold text-primary"
-                        : isCompleted(
-                            item.number
-                          )
-                        ? "text-green-500"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
+                  {index < steps.length - 1 && (
+                    <div
+                      className={`mx-4 flex-1 border-t-2 ${
+                        step > item.number
+                          ? "border-primary"
+                          : "border-gray-300"
+                      }`}
+                    />
+                  )}
                 </div>
-
-                {index < 2 && (
-                  <div
-                    className={`mx-4 flex-1 border-t-2 ${
-                      step > item.number
-                        ? "border-primary"
-                        : "border-gray-300"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Step 1 - Address                                                  */}
-          {/* ---------------------------------------------------------------- */}
+          {/* ============================================================ */}
+          {/* Step 1                                                        */}
+          {/* ============================================================ */}
 
           {step === 1 && (
             <form
@@ -655,19 +641,16 @@ export default function CheckoutComponent() {
                     }
 
                     setAddress(
-                      result.address ?? null
+                      result.address
                     );
 
-                    setUser(
-                      (current) => ({
-                        ...current,
-                        _id: current?._id,
-                        address: {
-                          ...values,
-                          active: true,
-                        },
-                      })
-                    );
+                    setUser((current) => ({
+                      ...current,
+                      address: {
+                        ...values,
+                        active: true,
+                      },
+                    }));
 
                     toast.success(
                       "Address saved successfully."
@@ -696,9 +679,9 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Step 2 - Coupon                                                   */}
-          {/* ---------------------------------------------------------------- */}
+          {/* ============================================================ */}
+          {/* Step 2                                                        */}
+          {/* ============================================================ */}
 
           {step === 2 && (
             <form
@@ -712,9 +695,9 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Step 3 - Payment                                                  */}
-          {/* ---------------------------------------------------------------- */}
+          {/* ============================================================ */}
+          {/* Step 3                                                        */}
+          {/* ============================================================ */}
 
           {step === 3 && (
             <div className="space-y-4">
@@ -753,9 +736,7 @@ export default function CheckoutComponent() {
             </div>
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Navigation                                                        */}
-          {/* ---------------------------------------------------------------- */}
+          {/* Navigation */}
 
           <div className="mt-6 flex justify-between">
             {step > 1 && (
@@ -780,9 +761,9 @@ export default function CheckoutComponent() {
           </div>
         </div>
 
-        {/* ================================================================== */}
-        {/* Order Summary                                                      */}
-        {/* ================================================================== */}
+        {/* ================================================================ */}
+        {/* Order Summary                                                     */}
+        {/* ================================================================ */}
 
         <div className="w-full self-start bg-gray-100 lg:sticky lg:top-4 lg:w-1/3">
           <div className="p-6">
@@ -794,13 +775,10 @@ export default function CheckoutComponent() {
             {/* Products */}
 
             <div className="space-y-4">
-              {products.map(
+              {data.products.map(
                 (item, index) => (
                   <div
-                    key={
-                      item._id ||
-                      `${item.product}-${index}`
-                    }
+                    key={item._id || index}
                     className="flex items-center gap-4"
                   >
                     <img
@@ -841,8 +819,8 @@ export default function CheckoutComponent() {
               <div className="flex justify-between">
                 <span>
                   Subtotal (
-                  {products.length}{" "}
-                  {products.length === 1
+                  {data.products.length}{" "}
+                  {data.products.length === 1
                     ? "Item"
                     : "Items"}
                   ):
@@ -879,7 +857,7 @@ export default function CheckoutComponent() {
                 </span>
 
                 <span>
-                  ₹ {data.cartTotal ?? 0}
+                  ₹ {data.cartTotal.toFixed(2)}
                 </span>
               </div>
 
@@ -901,9 +879,7 @@ export default function CheckoutComponent() {
 
               {totalAfterDiscount &&
                 Number(totalAfterDiscount) <
-                  Number(
-                    data.cartTotal ?? 0
-                  ) && (
+                  data.cartTotal && (
                   <div className="flex justify-between p-2 text-lg">
                     <span>
                       Total after Discount:
