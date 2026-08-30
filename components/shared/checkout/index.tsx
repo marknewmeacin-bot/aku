@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -37,15 +38,54 @@ import { useCartStore } from "@/store/cart";
 import DeliveryAddressForm from "./delivery.address.form";
 import ApplyCouponForm from "./apply.coupon.form";
 
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+type ProductColor = {
+  color: string;
+  image: string;
+};
+
+type CheckoutProduct = {
+  product: string;
+  name: string;
+  image: string;
+  size: string;
+  qty: number;
+  color: ProductColor;
+  price: number;
+  status: string;
+  productCompletedAt: Date | null;
+  _id: string;
+};
+
 type CheckoutData = {
-  products?: any[];
+  products?: CheckoutProduct[];
   cartTotal?: number;
+};
+
+type UserAddress = {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  state?: string;
+  city?: string;
+  zipCode?: string;
+  address1?: string;
+  address2?: string;
+  country?: string;
+  active?: boolean;
 };
 
 type UserData = {
   _id?: string;
-  address?: any;
+  address?: UserAddress;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Component                                                                  */
+/* -------------------------------------------------------------------------- */
 
 export default function CheckoutComponent() {
   const router = useRouter();
@@ -58,23 +98,44 @@ export default function CheckoutComponent() {
   const { emptyCart } = useCartStore();
 
   const [step, setStep] = useState(1);
-  const [user, setUser] = useState<UserData | null>(null);
-  const [address, setAddress] = useState<any>(null);
-  const [data, setData] = useState<CheckoutData>({});
 
-  const [coupon, setCoupon] = useState("");
-  const [couponError, setCouponError] = useState("");
+  const [user, setUser] =
+    useState<UserData | null>(null);
+
+  const [address, setAddress] =
+    useState<UserAddress | null>(null);
+
+  const [data, setData] =
+    useState<CheckoutData>({});
+
+  const [coupon, setCoupon] =
+    useState("");
+
+  const [couponError, setCouponError] =
+    useState("");
 
   const [paymentMethod, setPaymentMethod] =
     useState("cod");
 
-  const [totalAfterDiscount, setTotalAfterDiscount] =
-    useState("");
+  const [
+    totalAfterDiscount,
+    setTotalAfterDiscount,
+  ] = useState("");
 
-  const [discount, setDiscount] = useState(0);
-  const [subTotal, setSubtotal] = useState(0);
-  const [placeOrderLoading, setPlaceOrderLoading] =
-    useState(false);
+  const [discount, setDiscount] =
+    useState(0);
+
+  const [subTotal, setSubtotal] =
+    useState(0);
+
+  const [
+    placeOrderLoading,
+    setPlaceOrderLoading,
+  ] = useState(false);
+
+  /* -------------------------------------------------------------------------- */
+  /* Checkout Form                                                              */
+  /* -------------------------------------------------------------------------- */
 
   const form = useForm({
     initialValues: {
@@ -132,7 +193,10 @@ export default function CheckoutComponent() {
     },
   });
 
-  /* Load Checkout */
+  /* -------------------------------------------------------------------------- */
+  /* Load Checkout Data                                                         */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!userId) return;
 
@@ -145,7 +209,11 @@ export default function CheckoutComponent() {
         setUser(result?.user ?? null);
         setAddress(result?.address ?? null);
       } catch (error) {
-        console.error(error);
+        console.error(
+          "Error loading checkout:",
+          error
+        );
+
         toast.error(
           "Unable to load checkout information."
         );
@@ -155,14 +223,18 @@ export default function CheckoutComponent() {
     loadCheckout();
   }, [userId]);
 
-  /* Load Saved Address */
+  /* -------------------------------------------------------------------------- */
+  /* Load Saved Address                                                         */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!address) return;
 
     form.setValues({
       firstName: address.firstName ?? "",
       lastName: address.lastName ?? "",
-      phoneNumber: address.phoneNumber ?? "",
+      phoneNumber:
+        address.phoneNumber ?? "",
       state: address.state ?? "",
       city: address.city ?? "",
       zipCode: address.zipCode ?? "",
@@ -170,9 +242,20 @@ export default function CheckoutComponent() {
       address2: address.address2 ?? "",
       country: address.country ?? "",
     });
-  }, [address]);
+  }, [address, form]);
 
-  /* Calculate Subtotal */
+  /* -------------------------------------------------------------------------- */
+  /* Rehydrate Cart                                                             */
+  /* -------------------------------------------------------------------------- */
+
+  useEffect(() => {
+    useCartStore.persist.rehydrate();
+  }, []);
+
+  /* -------------------------------------------------------------------------- */
+  /* Calculate Subtotal                                                         */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     const total = cart.reduce(
       (sum: number, item: any) =>
@@ -182,13 +265,21 @@ export default function CheckoutComponent() {
       0
     );
 
-    setSubtotal(Number(total.toFixed(2)));
+    setSubtotal(
+      Number(total.toFixed(2))
+    );
   }, [cart]);
 
-  /* Rehydrate Cart */
-  useEffect(() => {
-    useCartStore.persist.rehydrate();
-  }, []);
+  /* -------------------------------------------------------------------------- */
+  /* Safe Products Array                                                        */
+  /* -------------------------------------------------------------------------- */
+
+  const products: CheckoutProduct[] =
+    data.products ?? [];
+
+  /* -------------------------------------------------------------------------- */
+  /* Step Navigation                                                            */
+  /* -------------------------------------------------------------------------- */
 
   const nextStep = () => {
     setStep((current) =>
@@ -202,13 +293,18 @@ export default function CheckoutComponent() {
     );
   };
 
-  const isCompleted = (currentStep: number) =>
-    step > currentStep;
+  const isCompleted = (
+    currentStep: number
+  ) => step > currentStep;
 
-  const isActive = (currentStep: number) =>
-    step === currentStep;
+  const isActive = (
+    currentStep: number
+  ) => step === currentStep;
 
-  /* Apply Coupon */
+  /* -------------------------------------------------------------------------- */
+  /* Apply Coupon                                                               */
+  /* -------------------------------------------------------------------------- */
+
   const applyCouponHandler = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -227,9 +323,11 @@ export default function CheckoutComponent() {
       setCouponError(
         "Please enter a coupon code."
       );
+
       toast.error(
         "Please enter a coupon code."
       );
+
       return;
     }
 
@@ -249,16 +347,24 @@ export default function CheckoutComponent() {
         result.totalAfterDiscount ?? ""
       );
 
-      setDiscount(result.discount ?? 0);
+      setDiscount(
+        result.discount ?? 0
+      );
+
       setCouponError("");
 
       toast.success(
-        `Applied ${result.discount ?? 0}% discount successfully.`
+        `Applied ${
+          result.discount ?? 0
+        }% discount successfully.`
       );
 
       nextStep();
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Error applying coupon:",
+        error
+      );
 
       const message =
         error instanceof Error
@@ -270,7 +376,10 @@ export default function CheckoutComponent() {
     }
   };
 
-  /* Cart Totals */
+  /* -------------------------------------------------------------------------- */
+  /* Cart Totals                                                                */
+  /* -------------------------------------------------------------------------- */
+
   const totalSaved = cart.reduce(
     (total: number, item: any) =>
       total +
@@ -283,7 +392,10 @@ export default function CheckoutComponent() {
     subTotal + totalSaved
   ).toFixed(0);
 
-  /* Button */
+  /* -------------------------------------------------------------------------- */
+  /* Place Order Button                                                         */
+  /* -------------------------------------------------------------------------- */
+
   const isDisabled =
     !paymentMethod ||
     !user?.address?.firstName ||
@@ -298,12 +410,17 @@ export default function CheckoutComponent() {
       return "Please Add Billing Address";
     }
 
-    return paymentMethod === "cod"
-      ? "Place Order with COD"
-      : "Place Order with Stripe";
+    if (paymentMethod === "cod") {
+      return "Place Order with COD";
+    }
+
+    return "Place Order with Stripe";
   };
 
-  /* Place Order */
+  /* -------------------------------------------------------------------------- */
+  /* Place Order                                                                */
+  /* -------------------------------------------------------------------------- */
+
   const placeOrderHandler = async () => {
     if (placeOrderLoading) return;
 
@@ -317,7 +434,14 @@ export default function CheckoutComponent() {
         return;
       }
 
-      if (!user?.address?.firstName) {
+      if (!user?._id) {
+        toast.error(
+          "User information is not available."
+        );
+        return;
+      }
+
+      if (!user.address?.firstName) {
         toast.error(
           "Please fill in all billing address details."
         );
@@ -328,10 +452,14 @@ export default function CheckoutComponent() {
         totalAfterDiscount ||
         String(data.cartTotal ?? 0);
 
+      /* ---------------------------------------------------------------------- */
+      /* Stripe                                                                  */
+      /* ---------------------------------------------------------------------- */
+
       if (paymentMethod === "stripe") {
         const response =
           await createStripeOrder(
-            data.products,
+            products,
             user.address,
             paymentMethod,
             finalTotal,
@@ -354,22 +482,28 @@ export default function CheckoutComponent() {
         return;
       }
 
-      const response = await createOrder(
-        data.products,
-        user.address,
-        paymentMethod,
-        finalTotal,
-        data.cartTotal,
-        coupon,
-        user._id,
-        totalSaved
-      );
+      /* ---------------------------------------------------------------------- */
+      /* COD                                                                     */
+      /* ---------------------------------------------------------------------- */
+
+      const response =
+        await createOrder(
+          products,
+          user.address,
+          paymentMethod,
+          finalTotal,
+          data.cartTotal,
+          coupon,
+          user._id,
+          totalSaved
+        );
 
       if (!response?.success) {
         toast.error(
           response?.message ||
             "Order creation failed."
         );
+
         return;
       }
 
@@ -379,7 +513,10 @@ export default function CheckoutComponent() {
         `/order/${response.orderId}`
       );
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Error placing order:",
+        error
+      );
 
       toast.error(
         error instanceof Error
@@ -391,6 +528,10 @@ export default function CheckoutComponent() {
     }
   };
 
+  /* -------------------------------------------------------------------------- */
+  /* Render                                                                     */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="container mx-auto p-4 md:p-8">
       <h1 className="mb-6 text-center text-2xl font-bold">
@@ -398,9 +539,17 @@ export default function CheckoutComponent() {
       </h1>
 
       <div className="flex flex-col gap-8 lg:flex-row">
+
+        {/* ================================================================== */}
+        {/* Checkout Section                                                   */}
+        {/* ================================================================== */}
+
         <div className="w-full lg:w-2/3">
 
-          {/* Stepper */}
+          {/* ---------------------------------------------------------------- */}
+          {/* Stepper                                                           */}
+          {/* ---------------------------------------------------------------- */}
+
           <div className="mb-8 flex items-center justify-between">
             {[
               {
@@ -428,7 +577,9 @@ export default function CheckoutComponent() {
                     className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
                       isActive(item.number)
                         ? "border-primary bg-primary text-white"
-                        : isCompleted(item.number)
+                        : isCompleted(
+                            item.number
+                          )
                         ? "border-green-500 bg-green-500 text-white"
                         : "border-gray-300 bg-gray-200 text-gray-500"
                     }`}
@@ -446,7 +597,9 @@ export default function CheckoutComponent() {
                     className={`mt-2 hidden text-sm lg:block ${
                       isActive(item.number)
                         ? "font-semibold text-primary"
-                        : isCompleted(item.number)
+                        : isCompleted(
+                            item.number
+                          )
                         ? "text-green-500"
                         : "text-muted-foreground"
                     }`}
@@ -468,7 +621,10 @@ export default function CheckoutComponent() {
             ))}
           </div>
 
-          {/* Step 1 */}
+          {/* ---------------------------------------------------------------- */}
+          {/* Step 1 - Address                                                  */}
+          {/* ---------------------------------------------------------------- */}
+
           {step === 1 && (
             <form
               onSubmit={form.onSubmit(
@@ -499,16 +655,19 @@ export default function CheckoutComponent() {
                     }
 
                     setAddress(
-                      result.address
+                      result.address ?? null
                     );
 
-                    setUser((current) => ({
-                      ...current,
-                      address: {
-                        ...values,
-                        active: true,
-                      },
-                    }));
+                    setUser(
+                      (current) => ({
+                        ...current,
+                        _id: current?._id,
+                        address: {
+                          ...values,
+                          active: true,
+                        },
+                      })
+                    );
 
                     toast.success(
                       "Address saved successfully."
@@ -516,7 +675,10 @@ export default function CheckoutComponent() {
 
                     nextStep();
                   } catch (error) {
-                    console.error(error);
+                    console.error(
+                      "Error saving address:",
+                      error
+                    );
 
                     toast.error(
                       error instanceof Error
@@ -534,7 +696,10 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* Step 2 */}
+          {/* ---------------------------------------------------------------- */}
+          {/* Step 2 - Coupon                                                   */}
+          {/* ---------------------------------------------------------------- */}
+
           {step === 2 && (
             <form
               onSubmit={applyCouponHandler}
@@ -547,7 +712,10 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* Step 3 */}
+          {/* ---------------------------------------------------------------- */}
+          {/* Step 3 - Payment                                                  */}
+          {/* ---------------------------------------------------------------- */}
+
           {step === 3 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">
@@ -565,6 +733,7 @@ export default function CheckoutComponent() {
                     value="cod"
                     id="cod"
                   />
+
                   <Label htmlFor="cod">
                     Cash on Delivery (COD)
                   </Label>
@@ -575,6 +744,7 @@ export default function CheckoutComponent() {
                     value="stripe"
                     id="stripe"
                   />
+
                   <Label htmlFor="stripe">
                     Stripe
                   </Label>
@@ -583,7 +753,10 @@ export default function CheckoutComponent() {
             </div>
           )}
 
-          {/* Navigation */}
+          {/* ---------------------------------------------------------------- */}
+          {/* Navigation                                                        */}
+          {/* ---------------------------------------------------------------- */}
+
           <div className="mt-6 flex justify-between">
             {step > 1 && (
               <Button
@@ -607,18 +780,27 @@ export default function CheckoutComponent() {
           </div>
         </div>
 
-        {/* Order Summary */}
+        {/* ================================================================== */}
+        {/* Order Summary                                                      */}
+        {/* ================================================================== */}
+
         <div className="w-full self-start bg-gray-100 lg:sticky lg:top-4 lg:w-1/3">
           <div className="p-6">
+
             <h2 className="mb-4 text-xl font-semibold">
               Order Summary
             </h2>
 
+            {/* Products */}
+
             <div className="space-y-4">
-              {data.products?.map(
-                (item: any, index: number) => (
+              {products.map(
+                (item, index) => (
                   <div
-                    key={index}
+                    key={
+                      item._id ||
+                      `${item.product}-${index}`
+                    }
                     className="flex items-center gap-4"
                   >
                     <img
@@ -652,29 +834,40 @@ export default function CheckoutComponent() {
               )}
             </div>
 
+            {/* Totals */}
+
             <div className="mt-6 space-y-2">
+
               <div className="flex justify-between">
                 <span>
                   Subtotal (
-                  {data.products?.length ?? 0}{" "}
-                  {data.products?.length === 1
+                  {products.length}{" "}
+                  {products.length === 1
                     ? "Item"
                     : "Items"}
                   ):
                 </span>
 
-                <strong>₹ {cartTotal}</strong>
+                <strong>
+                  ₹ {cartTotal}
+                </strong>
               </div>
 
               <div className="flex justify-between text-green-600">
-                <span>Cart Discount:</span>
+                <span>
+                  Cart Discount:
+                </span>
+
                 <strong>
                   - ₹ {totalSaved.toFixed(2)}
                 </strong>
               </div>
 
               <div className="flex justify-between text-green-600">
-                <span>Shipping Charges:</span>
+                <span>
+                  Shipping Charges:
+                </span>
+
                 <span>Free</span>
               </div>
 
@@ -690,16 +883,27 @@ export default function CheckoutComponent() {
                 </span>
               </div>
 
+              {/* Coupon */}
+
               {discount > 0 && (
                 <div className="flex justify-between bg-green-700 p-2 text-sm text-white">
-                  <span>Coupon applied:</span>
-                  <strong>{discount}%</strong>
+                  <span>
+                    Coupon applied:
+                  </span>
+
+                  <strong>
+                    {discount}%
+                  </strong>
                 </div>
               )}
 
+              {/* Discounted Total */}
+
               {totalAfterDiscount &&
                 Number(totalAfterDiscount) <
-                  Number(data.cartTotal) && (
+                  Number(
+                    data.cartTotal ?? 0
+                  ) && (
                   <div className="flex justify-between p-2 text-lg">
                     <span>
                       Total after Discount:
@@ -711,6 +915,8 @@ export default function CheckoutComponent() {
                   </div>
                 )}
             </div>
+
+            {/* Place Order */}
 
             <Button
               type="button"
@@ -726,6 +932,7 @@ export default function CheckoutComponent() {
               ) : (
                 <>
                   {getButtonText()}
+
                   <FaArrowAltCircleRight
                     size={25}
                   />
