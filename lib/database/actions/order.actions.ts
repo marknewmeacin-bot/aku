@@ -10,7 +10,6 @@ import { handleError } from "@/lib/utils";
 import mongoose from "mongoose";
 import { redirect } from "next/navigation";
 import { stripe } from "@/lib/stripe";
-import { unstable_cache } from "next/cache";
 const { ObjectId } = mongoose.Types;
 
 export async function sendOrderConfirmationEmail(order: any) {
@@ -130,43 +129,38 @@ export async function createOrder(
 }
 
 // get order details by its ID
-export const getOrderDetailsById = unstable_cache(
-  async (orderId: string) => {
-    try {
-      if (!ObjectId.isValid(orderId)) {
-        redirect("/");
-      }
-      await connectToDatabase();
-      const orderData = await Order.findById(orderId)
-        .populate({ path: "user", model: User })
-        .lean();
-      if (!orderData) {
-        return {
-          message: "Order not found with this ID!",
-          success: false,
-          orderData: [],
-        };
-      } else {
-        return {
-          message: "Successfully grabbed data.",
-          success: true,
-          orderData: JSON.parse(JSON.stringify(orderData)),
-        };
-      }
-    } catch (error) {
-      handleError(error);
+export async function getOrderDetailsById(orderId: string) {
+  try {
+    if (!ObjectId.isValid(orderId)) {
+      redirect("/");
+    }
+    await connectToDatabase();
+    const orderData = await Order.findById(orderId)
+      .populate({ path: "user", model: User })
+      .lean();
+
+    if (!orderData) {
       return {
-        message: "Failed to fetch order details",
+        message: "Order not found with this ID!",
         success: false,
-        orderData: null,
+        orderData: [],
       };
     }
-  },
-  ["order_details"],
-  {
-    revalidate: 300,
+
+    return {
+      message: "Successfully grabbed data.",
+      success: true,
+      orderData: JSON.parse(JSON.stringify(orderData)),
+    };
+  } catch (error) {
+    handleError(error);
+    return {
+      message: "Failed to fetch order details",
+      success: false,
+      orderData: null,
+    };
   }
-);
+}
 
 // create a stripe order instance
 export async function createStripeOrder(

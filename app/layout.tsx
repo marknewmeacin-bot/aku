@@ -7,6 +7,7 @@ import MobileBottomBar from "@/components/shared/MobileBottomBar";
 import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
 import TopBarComponent from "@/components/shared/TopBar";
+import SessionGuard from "@/components/shared/auth/SessionGuard";
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -34,12 +35,14 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <TopBarComponent />
-          <Navbar />
-          {children}
-          <MobileBottomBar />
-          <Footer />
-          <Toaster />
+          <SessionGuard>
+            <TopBarComponent />
+            <Navbar />
+            {children}
+            <MobileBottomBar />
+            <Footer />
+            <Toaster />
+          </SessionGuard>
         </body>
       </html>
     </ClerkProvider>
