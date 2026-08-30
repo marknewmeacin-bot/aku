@@ -1,4 +1,3 @@
-
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -38,58 +37,50 @@ type OrdersResponse = {
   orders?: any[];
 };
 
-/* -------------------------------------------------------------------------- */
-/* Create user                                                                */
-/* -------------------------------------------------------------------------- */
-
-export async function createUser(
-  user: UserData
-) {
+/* Create User */
+export async function createUser(user: UserData) {
   try {
     await connectToDatabase();
 
     const newUser = await User.create(user);
 
-    return JSON.parse(
-      JSON.stringify(newUser)
-    );
+    return {
+      success: true,
+      message: "User created successfully.",
+      user: JSON.parse(JSON.stringify(newUser)),
+    };
   } catch (error) {
     handleError(error);
 
-    return null;
+    return {
+      success: false,
+      message: "Failed to create user.",
+      user: null,
+    };
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Get user by Clerk ID                                                       */
-/* -------------------------------------------------------------------------- */
-
+/* Get User */
 export async function getUserById(
   clerkId: string
 ): Promise<UserResponse> {
   try {
     await connectToDatabase();
 
-    const user = await User.findOne({
-      clerkId,
-    });
+    const user = await User.findOne({ clerkId });
 
     if (!user) {
       return {
         success: false,
-        message:
-          "User not found with this ID!",
+        message: "User not found with this ID.",
         user: null,
       };
     }
 
     return {
       success: true,
-      message:
-        "Successfully fetched User data.",
-      user: JSON.parse(
-        JSON.stringify(user)
-      ),
+      message: "Successfully fetched user data.",
+      user: JSON.parse(JSON.stringify(user)),
     };
   } catch (error) {
     handleError(error);
@@ -102,10 +93,7 @@ export async function getUserById(
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Update user                                                                */
-/* -------------------------------------------------------------------------- */
-
+/* Update User */
 export async function updateUser(
   clerkId: string,
   userData: UserData
@@ -113,29 +101,24 @@ export async function updateUser(
   try {
     await connectToDatabase();
 
-    const updatedUser =
-      await User.findOneAndUpdate(
-        { clerkId },
-        userData,
-        { new: true }
-      );
+    const updatedUser = await User.findOneAndUpdate(
+      { clerkId },
+      userData,
+      { new: true }
+    );
 
     if (!updatedUser) {
       return {
         success: false,
-        message:
-          "User not found with this ID!",
+        message: "User not found with this ID.",
         user: null,
       };
     }
 
     return {
       success: true,
-      message:
-        "User updated successfully.",
-      user: JSON.parse(
-        JSON.stringify(updatedUser)
-      ),
+      message: "User updated successfully.",
+      user: JSON.parse(JSON.stringify(updatedUser)),
     };
   } catch (error) {
     handleError(error);
@@ -148,32 +131,24 @@ export async function updateUser(
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Delete user                                                                */
-/* -------------------------------------------------------------------------- */
-
+/* Delete User */
 export async function deleteUser(
   clerkId: string
 ): Promise<UserResponse> {
   try {
     await connectToDatabase();
 
-    const userToDelete =
-      await User.findOne({ clerkId });
+    const user = await User.findOne({ clerkId });
 
-    if (!userToDelete) {
+    if (!user) {
       return {
         success: false,
-        message:
-          "User not found with this ID!",
+        message: "User not found with this ID.",
         user: null,
       };
     }
 
-    const deletedUser =
-      await User.findByIdAndDelete(
-        userToDelete._id
-      );
+    const deletedUser = await User.findByIdAndDelete(user._id);
 
     if (!deletedUser) {
       return {
@@ -187,11 +162,8 @@ export async function deleteUser(
 
     return {
       success: true,
-      message:
-        "Successfully deleted User.",
-      user: JSON.parse(
-        JSON.stringify(deletedUser)
-      ),
+      message: "User deleted successfully.",
+      user: JSON.parse(JSON.stringify(deletedUser)),
     };
   } catch (error) {
     handleError(error);
@@ -204,10 +176,7 @@ export async function deleteUser(
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Change active address                                                     */
-/* -------------------------------------------------------------------------- */
-
+/* Change Active Address */
 export async function changeActiveAddress(
   id: string,
   userId: string
@@ -215,8 +184,7 @@ export async function changeActiveAddress(
   try {
     await connectToDatabase();
 
-    const user =
-      await User.findById(userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return {
@@ -226,18 +194,12 @@ export async function changeActiveAddress(
       };
     }
 
-    const addresses = (
-      user.address ?? []
-    ).map((address: any) => {
-      const addressData =
-        address.toObject();
-
-      return {
-        ...addressData,
-        active:
-          address._id.toString() === id,
-      };
-    });
+    const addresses = (user.address ?? []).map(
+      (address: any) => ({
+        ...address.toObject(),
+        active: address._id.toString() === id,
+      })
+    );
 
     user.address = addresses;
 
@@ -245,26 +207,20 @@ export async function changeActiveAddress(
 
     return {
       success: true,
-      addresses: JSON.parse(
-        JSON.stringify(addresses)
-      ),
+      addresses: JSON.parse(JSON.stringify(addresses)),
     };
   } catch (error) {
     handleError(error);
 
     return {
       success: false,
-      message:
-        "Failed to update active address.",
+      message: "Failed to update active address.",
       addresses: [],
     };
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Delete address                                                             */
-/* -------------------------------------------------------------------------- */
-
+/* Delete Address */
 export async function deleteAddress(
   id: string,
   userId: string
@@ -272,8 +228,7 @@ export async function deleteAddress(
   try {
     await connectToDatabase();
 
-    const user =
-      await User.findById(userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return {
@@ -283,9 +238,7 @@ export async function deleteAddress(
       };
     }
 
-    user.address = (
-      user.address ?? []
-    ).filter(
+    user.address = (user.address ?? []).filter(
       (address: any) =>
         address._id.toString() !== id
     );
@@ -303,17 +256,13 @@ export async function deleteAddress(
 
     return {
       success: false,
-      message:
-        "Failed to delete address.",
+      message: "Failed to delete address.",
       addresses: [],
     };
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Save address                                                               */
-/* -------------------------------------------------------------------------- */
-
+/* Save Address */
 export async function saveAddress(
   address: Record<string, unknown>,
   userId: string
@@ -321,14 +270,13 @@ export async function saveAddress(
   try {
     await connectToDatabase();
 
-    const user =
-      await User.findById(userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return {
         success: false,
         message: "User not found.",
-        addresses: [],
+        address: null,
       };
     }
 
@@ -338,6 +286,7 @@ export async function saveAddress(
 
     return {
       success: true,
+      message: "Address saved successfully.",
       address: JSON.parse(
         JSON.stringify(user.address)
       ),
@@ -347,16 +296,13 @@ export async function saveAddress(
 
     return {
       success: false,
-      message:
-        "Failed to save address.",
+      message: "Failed to save address.",
+      address: null,
     };
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Apply coupon                                                               */
-/* -------------------------------------------------------------------------- */
-
+/* Apply Coupon */
 export async function applyCoupon(
   coupon: string,
   userId: string
@@ -364,8 +310,7 @@ export async function applyCoupon(
   try {
     await connectToDatabase();
 
-    const user =
-      await User.findById(userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return {
@@ -379,15 +324,13 @@ export async function applyCoupon(
     if (!couponCode) {
       return {
         success: false,
-        message:
-          "Please enter a coupon code.",
+        message: "Please enter a coupon code.",
       };
     }
 
-    const checkCoupon =
-      await Coupon.findOne({
-        coupon: couponCode,
-      });
+    const checkCoupon = await Coupon.findOne({
+      coupon: couponCode,
+    });
 
     if (!checkCoupon) {
       return {
@@ -396,10 +339,9 @@ export async function applyCoupon(
       };
     }
 
-    const cart =
-      await Cart.findOne({
-        user: userId,
-      });
+    const cart = await Cart.findOne({
+      user: userId,
+    });
 
     if (!cart) {
       return {
@@ -408,30 +350,21 @@ export async function applyCoupon(
       };
     }
 
-    const discount =
-      Number(checkCoupon.discount) || 0;
-
-    const cartTotal =
-      Number(cart.cartTotal) || 0;
+    const discount = Number(checkCoupon.discount) || 0;
+    const cartTotal = Number(cart.cartTotal) || 0;
 
     const totalAfterDiscount =
-      cartTotal -
-      (cartTotal * discount) / 100;
+      cartTotal - (cartTotal * discount) / 100;
 
     await Cart.findOneAndUpdate(
       { user: userId },
-      {
-        totalAfterDiscount,
-      },
-      {
-        new: true,
-      }
+      { totalAfterDiscount },
+      { new: true }
     );
 
     return {
       success: true,
-      message:
-        "Successfully applied Coupon.",
+      message: "Successfully applied Coupon.",
       totalAfterDiscount:
         totalAfterDiscount.toFixed(2),
       discount,
@@ -441,26 +374,19 @@ export async function applyCoupon(
 
     return {
       success: false,
-      message:
-        "Failed to apply coupon.",
+      message: "Failed to apply coupon.",
     };
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Get all orders for user profile                                            */
-/* -------------------------------------------------------------------------- */
-
+/* Get User Orders */
 export async function getAllUserOrdersProfile(
   clerkId: string
 ): Promise<OrdersResponse> {
   try {
     await connectToDatabase();
 
-    const user =
-      await User.findOne({
-        clerkId,
-      });
+    const user = await User.findOne({ clerkId });
 
     if (!user) {
       return {
@@ -470,28 +396,23 @@ export async function getAllUserOrdersProfile(
       };
     }
 
-    const orders =
-      await Order.find({
-        user: user._id,
-      })
-        .sort({ createdAt: -1 })
-        .lean();
+    const orders = await Order.find({
+      user: user._id,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const filteredOrders =
-      orders.map((order) => ({
-        id: order._id,
-        date: new Date(
-          order.createdAt
-        ).toLocaleDateString(
-          "en-US",
-          {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          }
-        ),
-        total: order.total,
-      }));
+    const filteredOrders = orders.map((order) => ({
+      id: order._id,
+      date: new Date(
+        order.createdAt
+      ).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      total: order.total,
+    }));
 
     return {
       success: true,
@@ -504,10 +425,8 @@ export async function getAllUserOrdersProfile(
 
     return {
       success: false,
-      message:
-        "Failed to fetch orders.",
+      message: "Failed to fetch orders.",
       orders: [],
     };
   }
 }
-

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -38,6 +37,16 @@ import { useCartStore } from "@/store/cart";
 import DeliveryAddressForm from "./delivery.address.form";
 import ApplyCouponForm from "./apply.coupon.form";
 
+type CheckoutData = {
+  products?: any[];
+  cartTotal?: number;
+};
+
+type UserData = {
+  _id?: string;
+  address?: any;
+};
+
 export default function CheckoutComponent() {
   const router = useRouter();
   const { userId } = useAuth();
@@ -49,28 +58,23 @@ export default function CheckoutComponent() {
   const { emptyCart } = useCartStore();
 
   const [step, setStep] = useState(1);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [address, setAddress] = useState<any>(null);
-  const [data, setData] = useState<any>({});
+  const [data, setData] = useState<CheckoutData>({});
 
   const [coupon, setCoupon] = useState("");
   const [couponError, setCouponError] = useState("");
 
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] =
+    useState("cod");
 
   const [totalAfterDiscount, setTotalAfterDiscount] =
     useState("");
 
   const [discount, setDiscount] = useState(0);
-
   const [subTotal, setSubtotal] = useState(0);
-
   const [placeOrderLoading, setPlaceOrderLoading] =
     useState(false);
-
-  /* -------------------------------------------------------------------------- */
-  /* Checkout Form                                                              */
-  /* -------------------------------------------------------------------------- */
 
   const form = useForm({
     initialValues: {
@@ -97,7 +101,7 @@ export default function CheckoutComponent() {
           : null,
 
       phoneNumber: (value) =>
-        value.trim().length !== 10
+        !/^\d{10}$/.test(value.trim())
           ? "Phone number must be 10 numbers"
           : null,
 
@@ -128,14 +132,11 @@ export default function CheckoutComponent() {
     },
   });
 
-  /* -------------------------------------------------------------------------- */
-  /* Load Checkout Data                                                         */
-  /* -------------------------------------------------------------------------- */
-
+  /* Load Checkout */
   useEffect(() => {
     if (!userId) return;
 
-    const loadCheckoutData = async () => {
+    const loadCheckout = async () => {
       try {
         const result =
           await getSavedCartForUser(userId);
@@ -144,95 +145,70 @@ export default function CheckoutComponent() {
         setUser(result?.user ?? null);
         setAddress(result?.address ?? null);
       } catch (error) {
-        console.error(
-          "Error loading checkout data:",
-          error
-        );
-
+        console.error(error);
         toast.error(
           "Unable to load checkout information."
         );
       }
     };
 
-    loadCheckoutData();
+    loadCheckout();
   }, [userId]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Load Saved Address                                                         */
-  /* -------------------------------------------------------------------------- */
-
+  /* Load Saved Address */
   useEffect(() => {
-    if (
-      !address ||
-      Object.keys(address).length === 0
-    ) {
-      return;
-    }
+    if (!address) return;
 
     form.setValues({
-      firstName: address.firstName || "",
-      lastName: address.lastName || "",
-      phoneNumber: address.phoneNumber || "",
-      state: address.state || "",
-      city: address.city || "",
-      zipCode: address.zipCode || "",
-      address1: address.address1 || "",
-      address2: address.address2 || "",
-      country: address.country || "",
+      firstName: address.firstName ?? "",
+      lastName: address.lastName ?? "",
+      phoneNumber: address.phoneNumber ?? "",
+      state: address.state ?? "",
+      city: address.city ?? "",
+      zipCode: address.zipCode ?? "",
+      address1: address.address1 ?? "",
+      address2: address.address2 ?? "",
+      country: address.country ?? "",
     });
   }, [address]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Calculate Subtotal                                                         */
-  /* -------------------------------------------------------------------------- */
-
+  /* Calculate Subtotal */
   useEffect(() => {
-    const subtotal = cart.reduce(
-      (total: number, item: any) =>
-        total +
+    const total = cart.reduce(
+      (sum: number, item: any) =>
+        sum +
         Number(item.price || 0) *
           Number(item.qty || 0),
       0
     );
 
-    setSubtotal(
-      Number(subtotal.toFixed(2))
-    );
+    setSubtotal(Number(total.toFixed(2)));
   }, [cart]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Rehydrate Cart                                                             */
-  /* -------------------------------------------------------------------------- */
-
+  /* Rehydrate Cart */
   useEffect(() => {
     useCartStore.persist.rehydrate();
   }, []);
 
-  /* -------------------------------------------------------------------------- */
-  /* Step Navigation                                                             */
-  /* -------------------------------------------------------------------------- */
-
   const nextStep = () => {
-    setStep((current) => current + 1);
+    setStep((current) =>
+      Math.min(current + 1, 3)
+    );
   };
 
   const prevStep = () => {
-    setStep((current) => current - 1);
+    setStep((current) =>
+      Math.max(current - 1, 1)
+    );
   };
 
-  const isStepCompleted = (
-    currentStep: number
-  ) => step > currentStep;
+  const isCompleted = (currentStep: number) =>
+    step > currentStep;
 
-  const isActiveStep = (
-    currentStep: number
-  ) => step === currentStep;
+  const isActive = (currentStep: number) =>
+    step === currentStep;
 
-  /* -------------------------------------------------------------------------- */
-  /* Apply Coupon                                                               */
-  /* -------------------------------------------------------------------------- */
-
+  /* Apply Coupon */
   const applyCouponHandler = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -251,11 +227,9 @@ export default function CheckoutComponent() {
       setCouponError(
         "Please enter a coupon code."
       );
-
       toast.error(
         "Please enter a coupon code."
       );
-
       return;
     }
 
@@ -279,17 +253,12 @@ export default function CheckoutComponent() {
       setCouponError("");
 
       toast.success(
-        `Applied ${
-          result.discount ?? 0
-        }% discount successfully.`
+        `Applied ${result.discount ?? 0}% discount successfully.`
       );
 
       nextStep();
     } catch (error) {
-      console.error(
-        "Error applying coupon:",
-        error
-      );
+      console.error(error);
 
       const message =
         error instanceof Error
@@ -301,10 +270,7 @@ export default function CheckoutComponent() {
     }
   };
 
-  /* -------------------------------------------------------------------------- */
-  /* Cart Totals                                                                 */
-  /* -------------------------------------------------------------------------- */
-
+  /* Cart Totals */
   const totalSaved = cart.reduce(
     (total: number, item: any) =>
       total +
@@ -317,10 +283,7 @@ export default function CheckoutComponent() {
     subTotal + totalSaved
   ).toFixed(0);
 
-  /* -------------------------------------------------------------------------- */
-  /* Place Order Button                                                          */
-  /* -------------------------------------------------------------------------- */
-
+  /* Button */
   const isDisabled =
     !paymentMethod ||
     !user?.address?.firstName ||
@@ -335,21 +298,12 @@ export default function CheckoutComponent() {
       return "Please Add Billing Address";
     }
 
-    if (paymentMethod === "cod") {
-      return "Place Order with COD";
-    }
-
-    if (paymentMethod === "stripe") {
-      return "Place Order with Stripe";
-    }
-
-    return "Place Order";
+    return paymentMethod === "cod"
+      ? "Place Order with COD"
+      : "Place Order with Stripe";
   };
 
-  /* -------------------------------------------------------------------------- */
-  /* Place Order                                                                 */
-  /* -------------------------------------------------------------------------- */
-
+  /* Place Order */
   const placeOrderHandler = async () => {
     if (placeOrderLoading) return;
 
@@ -365,25 +319,23 @@ export default function CheckoutComponent() {
 
       if (!user?.address?.firstName) {
         toast.error(
-          "Please fill in all details in the billing address."
+          "Please fill in all billing address details."
         );
         return;
       }
 
       const finalTotal =
         totalAfterDiscount ||
-        data?.cartTotal;
-
-      /* -------------------------------- Stripe -------------------------------- */
+        String(data.cartTotal ?? 0);
 
       if (paymentMethod === "stripe") {
         const response =
           await createStripeOrder(
-            data?.products,
+            data.products,
             user.address,
             paymentMethod,
             finalTotal,
-            data?.cartTotal,
+            data.cartTotal,
             coupon,
             user._id,
             totalSaved
@@ -402,23 +354,20 @@ export default function CheckoutComponent() {
         return;
       }
 
-      /* ---------------------------------- COD --------------------------------- */
+      const response = await createOrder(
+        data.products,
+        user.address,
+        paymentMethod,
+        finalTotal,
+        data.cartTotal,
+        coupon,
+        user._id,
+        totalSaved
+      );
 
-      const orderResponse =
-        await createOrder(
-          data?.products,
-          user.address,
-          paymentMethod,
-          finalTotal,
-          data?.cartTotal,
-          coupon,
-          user._id,
-          totalSaved
-        );
-
-      if (!orderResponse?.success) {
+      if (!response?.success) {
         toast.error(
-          orderResponse?.message ||
+          response?.message ||
             "Order creation failed."
         );
         return;
@@ -427,25 +376,20 @@ export default function CheckoutComponent() {
       emptyCart();
 
       router.replace(
-        `/order/${orderResponse.orderId}`
+        `/order/${response.orderId}`
       );
     } catch (error) {
-      console.error(
-        "Error placing order:",
-        error
-      );
+      console.error(error);
 
       toast.error(
-        "An error occurred. Please try again."
+        error instanceof Error
+          ? error.message
+          : "An error occurred. Please try again."
       );
     } finally {
       setPlaceOrderLoading(false);
     }
   };
-
-  /* -------------------------------------------------------------------------- */
-  /* Render                                                                     */
-  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -454,144 +398,77 @@ export default function CheckoutComponent() {
       </h1>
 
       <div className="flex flex-col gap-8 lg:flex-row">
-
-        {/* -------------------------------------------------------------------- */}
-        {/* Checkout Section                                                     */}
-        {/* -------------------------------------------------------------------- */}
-
         <div className="w-full lg:w-2/3">
 
           {/* Stepper */}
-
-          <div className="relative mb-8 flex items-center justify-between">
-
-            {/* Step 1 */}
-
-            <div className="flex flex-col items-center">
+          <div className="mb-8 flex items-center justify-between">
+            {[
+              {
+                number: 1,
+                icon: MapPin,
+                label: "Delivery Address",
+              },
+              {
+                number: 2,
+                icon: Ticket,
+                label: "Apply Coupon",
+              },
+              {
+                number: 3,
+                icon: CreditCard,
+                label: "Choose Payment Method",
+              },
+            ].map((item, index) => (
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
-                  isActiveStep(1)
-                    ? "border-primary bg-primary text-white"
-                    : isStepCompleted(1)
-                    ? "border-green-500 bg-green-500 text-white"
-                    : "border-gray-300 bg-gray-200 text-gray-500"
-                }`}
+                key={item.number}
+                className="flex flex-1 items-center"
               >
-                {isStepCompleted(1) ? (
-                  <CheckCircle className="h-5 w-5" />
-                ) : (
-                  <MapPin className="h-5 w-5" />
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
+                      isActive(item.number)
+                        ? "border-primary bg-primary text-white"
+                        : isCompleted(item.number)
+                        ? "border-green-500 bg-green-500 text-white"
+                        : "border-gray-300 bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {isCompleted(
+                      item.number
+                    ) ? (
+                      <CheckCircle className="h-5 w-5" />
+                    ) : (
+                      <item.icon className="h-5 w-5" />
+                    )}
+                  </div>
+
+                  <span
+                    className={`mt-2 hidden text-sm lg:block ${
+                      isActive(item.number)
+                        ? "font-semibold text-primary"
+                        : isCompleted(item.number)
+                        ? "text-green-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+
+                {index < 2 && (
+                  <div
+                    className={`mx-4 flex-1 border-t-2 ${
+                      step > item.number
+                        ? "border-primary"
+                        : "border-gray-300"
+                    }`}
+                  />
                 )}
               </div>
-
-              <span
-                className={`mt-2 text-sm ${
-                  isActiveStep(1)
-                    ? "font-semibold text-primary"
-                    : isStepCompleted(1)
-                    ? "text-green-500"
-                    : "text-muted-foreground"
-                }`}
-              >
-                <span className="hidden lg:block">
-                  Delivery Address
-                </span>
-              </span>
-            </div>
-
-            {/* Step 1 → Step 2 */}
-
-            <div
-              className={`mx-4 flex-1 border-t-2 ${
-                step >= 2
-                  ? "border-primary"
-                  : "border-gray-300"
-              }`}
-            />
-
-            {/* Step 2 */}
-
-            <div className="flex flex-col items-center">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
-                  isActiveStep(2)
-                    ? "border-primary bg-primary text-white"
-                    : isStepCompleted(2)
-                    ? "border-green-500 bg-green-500 text-white"
-                    : "border-gray-300 bg-gray-200 text-gray-500"
-                }`}
-              >
-                {isStepCompleted(2) ? (
-                  <CheckCircle className="h-5 w-5" />
-                ) : (
-                  <Ticket className="h-5 w-5" />
-                )}
-              </div>
-
-              <span
-                className={`mt-2 text-sm ${
-                  isActiveStep(2)
-                    ? "font-semibold text-primary"
-                    : isStepCompleted(2)
-                    ? "text-green-500"
-                    : "text-muted-foreground"
-                }`}
-              >
-                <span className="hidden lg:block">
-                  Apply Coupon
-                </span>
-              </span>
-            </div>
-
-            {/* Step 2 → Step 3 */}
-
-            <div
-              className={`mx-4 flex-1 border-t-2 ${
-                step >= 3
-                  ? "border-primary"
-                  : "border-gray-300"
-              }`}
-            />
-
-            {/* Step 3 */}
-
-            <div className="flex flex-col items-center">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
-                  isActiveStep(3)
-                    ? "border-primary bg-primary text-white"
-                    : isStepCompleted(3)
-                    ? "border-green-500 bg-green-500 text-white"
-                    : "border-gray-300 bg-gray-200 text-gray-500"
-                }`}
-              >
-                {isStepCompleted(3) ? (
-                  <CheckCircle className="h-5 w-5" />
-                ) : (
-                  <CreditCard className="h-5 w-5" />
-                )}
-              </div>
-
-              <span
-                className={`mt-2 text-sm ${
-                  isActiveStep(3)
-                    ? "font-semibold text-primary"
-                    : isStepCompleted(3)
-                    ? "text-green-500"
-                    : "text-muted-foreground"
-                }`}
-              >
-                <span className="hidden lg:block">
-                  Choose Payment Method
-                </span>
-              </span>
-            </div>
+            ))}
           </div>
 
-          {/* ------------------------------------------------------------------ */}
-          {/* Step 1 - Delivery Address                                          */}
-          {/* ------------------------------------------------------------------ */}
-
+          {/* Step 1 */}
           {step === 1 && (
             <form
               onSubmit={form.onSubmit(
@@ -613,9 +490,9 @@ export default function CheckoutComponent() {
                         user._id
                       );
 
-                    if (!result?.success) {
+                    if (!result.success) {
                       toast.error(
-                        result?.message ||
+                        result.message ||
                           "Unable to save address."
                       );
                       return;
@@ -625,7 +502,7 @@ export default function CheckoutComponent() {
                       result.address
                     );
 
-                    setUser((current: any) => ({
+                    setUser((current) => ({
                       ...current,
                       address: {
                         ...values,
@@ -634,15 +511,12 @@ export default function CheckoutComponent() {
                     }));
 
                     toast.success(
-                      "Successfully added address."
+                      "Address saved successfully."
                     );
 
                     nextStep();
                   } catch (error) {
-                    console.error(
-                      "Error saving address:",
-                      error
-                    );
+                    console.error(error);
 
                     toast.error(
                       error instanceof Error
@@ -660,10 +534,7 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ------------------------------------------------------------------ */}
-          {/* Step 2 - Coupon                                                    */}
-          {/* ------------------------------------------------------------------ */}
-
+          {/* Step 2 */}
           {step === 2 && (
             <form
               onSubmit={applyCouponHandler}
@@ -676,18 +547,10 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ------------------------------------------------------------------ */}
-          {/* Step 3 - Payment                                                   */}
-          {/* ------------------------------------------------------------------ */}
-
+          {/* Step 3 */}
           {step === 3 && (
-            <form
-              onSubmit={(event) =>
-                event.preventDefault()
-              }
-              className="space-y-4"
-            >
-              <h2 className="mb-4 text-xl font-semibold">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">
                 Choose Payment Method
               </h2>
 
@@ -697,39 +560,36 @@ export default function CheckoutComponent() {
                   setPaymentMethod
                 }
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <RadioGroupItem
                     value="cod"
                     id="cod"
                   />
-
                   <Label htmlFor="cod">
                     Cash on Delivery (COD)
                   </Label>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <RadioGroupItem
                     value="stripe"
                     id="stripe"
                   />
-
                   <Label htmlFor="stripe">
                     Stripe
                   </Label>
                 </div>
               </RadioGroup>
-            </form>
+            </div>
           )}
 
           {/* Navigation */}
-
           <div className="mt-6 flex justify-between">
             {step > 1 && (
               <Button
                 type="button"
-                onClick={prevStep}
                 variant="outline"
+                onClick={prevStep}
               >
                 Previous
               </Button>
@@ -747,28 +607,19 @@ export default function CheckoutComponent() {
           </div>
         </div>
 
-        {/* -------------------------------------------------------------------- */}
-        {/* Order Summary                                                        */}
-        {/* -------------------------------------------------------------------- */}
-
-        <div className="w-full self-start bg-gray-100 lg:sticky lg:top-[1rem] lg:w-1/3">
+        {/* Order Summary */}
+        <div className="w-full self-start bg-gray-100 lg:sticky lg:top-4 lg:w-1/3">
           <div className="p-6">
-
             <h2 className="mb-4 text-xl font-semibold">
               Order Summary
             </h2>
 
-            {/* Products */}
-
             <div className="space-y-4">
-              {data?.products?.map(
-                (
-                  item: any,
-                  index: number
-                ) => (
+              {data.products?.map(
+                (item: any, index: number) => (
                   <div
                     key={index}
-                    className="flex items-center space-x-4"
+                    className="flex items-center gap-4"
                   >
                     <img
                       src={item.image}
@@ -801,51 +652,33 @@ export default function CheckoutComponent() {
               )}
             </div>
 
-            {/* Totals */}
-
             <div className="mt-6 space-y-2">
-
               <div className="flex justify-between">
                 <span>
                   Subtotal (
-                  {data?.products?.length ||
-                    0}{" "}
-                  {data?.products?.length === 1
+                  {data.products?.length ?? 0}{" "}
+                  {data.products?.length === 1
                     ? "Item"
                     : "Items"}
                   ):
                 </span>
 
+                <strong>₹ {cartTotal}</strong>
+              </div>
+
+              <div className="flex justify-between text-green-600">
+                <span>Cart Discount:</span>
                 <strong>
-                  ₹ {cartTotal}
+                  - ₹ {totalSaved.toFixed(2)}
                 </strong>
               </div>
 
               <div className="flex justify-between text-green-600">
-                <span>
-                  Cart Discount:
-                </span>
-
-                <strong>
-                  - ₹ {totalSaved}
-                </strong>
-              </div>
-
-              <div className="flex justify-between text-green-600">
-                <span>
-                  Shipping Charges:
-                </span>
-
+                <span>Shipping Charges:</span>
                 <span>Free</span>
               </div>
 
-              <div
-                className={`flex justify-between ${
-                  totalAfterDiscount
-                    ? "text-sm"
-                    : "text-lg font-semibold"
-                }`}
-              >
+              <div className="flex justify-between text-lg font-semibold">
                 <span>
                   {totalAfterDiscount
                     ? "Total:"
@@ -853,67 +686,51 @@ export default function CheckoutComponent() {
                 </span>
 
                 <span>
-                  ₹ {data?.cartTotal}
+                  ₹ {data.cartTotal ?? 0}
                 </span>
               </div>
 
-              {/* Coupon */}
-
               {discount > 0 && (
-                <div className="flex justify-between border border-[#cccccc17] bg-green-700 p-[5px] text-[14px] text-white">
-                  <span>
-                    Coupon applied:
-                  </span>
-
-                  <strong>
-                    {discount}%
-                  </strong>
+                <div className="flex justify-between bg-green-700 p-2 text-sm text-white">
+                  <span>Coupon applied:</span>
+                  <strong>{discount}%</strong>
                 </div>
               )}
 
-              {/* Discounted Total */}
-
               {totalAfterDiscount &&
                 Number(totalAfterDiscount) <
-                  Number(data?.cartTotal) && (
-                  <div className="flex justify-between border border-[#cccccc17] p-[5px] text-lg">
+                  Number(data.cartTotal) && (
+                  <div className="flex justify-between p-2 text-lg">
                     <span>
                       Total after Discount:
                     </span>
 
-                    <strong className="text-[15px]">
-                      ₹{" "}
-                      {totalAfterDiscount}
+                    <strong>
+                      ₹ {totalAfterDiscount}
                     </strong>
                   </div>
                 )}
             </div>
 
-            {/* Place Order */}
-
             <Button
               type="button"
               onClick={placeOrderHandler}
               disabled={isDisabled}
-              className={`mt-4 flex h-[45px] w-full justify-center gap-[10px] bg-green-700 pt-[10px] text-white disabled:bg-[#ccc] ${
-                isDisabled
-                  ? "cursor-not-allowed bg-theme_light"
-                  : ""
-              }`}
+              className="mt-4 flex h-[45px] w-full justify-center gap-2 bg-green-700 text-white disabled:bg-gray-300"
             >
               {placeOrderLoading ? (
-                <div className="flex gap-[10px]">
+                <>
                   <Loader className="animate-spin" />
                   Loading...
-                </div>
+                </>
               ) : (
-                getButtonText()
+                <>
+                  {getButtonText()}
+                  <FaArrowAltCircleRight
+                    size={25}
+                  />
+                </>
               )}
-
-              <FaArrowAltCircleRight
-                size={25}
-                color="white"
-              />
             </Button>
           </div>
         </div>
