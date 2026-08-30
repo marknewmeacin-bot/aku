@@ -2,7 +2,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, CheckCircle, Loader, MapPin, Ticket } from "lucide-react";
+import {
+  CreditCard,
+  CheckCircle,
+  Loader,
+  MapPin,
+  Ticket,
+} from "lucide-react";
 import { useForm } from "@mantine/form";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
@@ -27,7 +33,6 @@ import {
 } from "@/lib/database/actions/order.actions";
 
 import { getSavedCartForUser } from "@/lib/database/actions/cart.actions";
-
 import { useCartStore } from "@/store/cart";
 
 import DeliveryAddressForm from "./delivery.address.form";
@@ -44,7 +49,10 @@ export default function CheckoutComponent() {
   const router = useRouter();
   const { userId } = useAuth();
 
-  const cart = useCartStore((state: any) => state.cart.cartItems);
+  const cart = useCartStore(
+    (state: any) => state.cart.cartItems
+  );
+
   const { emptyCart } = useCartStore();
 
   const [step, setStep] = useState(1);
@@ -57,11 +65,18 @@ export default function CheckoutComponent() {
 
   const [paymentMethod, setPaymentMethod] = useState("cod");
 
-  const [totalAfterDiscount, setTotalAfterDiscount] = useState("");
+  const [totalAfterDiscount, setTotalAfterDiscount] =
+    useState("");
+
   const [discount, setDiscount] = useState(0);
 
   const [subTotal, setSubtotal] = useState(0);
-  const [placeOrderLoading, setPlaceOrderLoading] = useState(false);
+  const [placeOrderLoading, setPlaceOrderLoading] =
+    useState(false);
+
+  /* -------------------------------------------------------------------------- */
+  /* Form                                                                       */
+  /* -------------------------------------------------------------------------- */
 
   const form = useForm({
     initialValues: {
@@ -120,7 +135,7 @@ export default function CheckoutComponent() {
   });
 
   /* -------------------------------------------------------------------------- */
-  /* Load checkout data                                                        */
+  /* Load checkout data                                                         */
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
@@ -134,8 +149,14 @@ export default function CheckoutComponent() {
         setUser(result?.user ?? null);
         setAddress(result?.address ?? null);
       } catch (error) {
-        console.error("Error loading checkout data:", error);
-        toast.error("Unable to load checkout information.");
+        console.error(
+          "Error loading checkout data:",
+          error
+        );
+
+        toast.error(
+          "Unable to load checkout information."
+        );
       }
     };
 
@@ -143,11 +164,13 @@ export default function CheckoutComponent() {
   }, [userId]);
 
   /* -------------------------------------------------------------------------- */
-  /* Set saved address                                                         */
+  /* Load saved address                                                        */
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
-    if (!address || Object.keys(address).length === 0) return;
+    if (!address || Object.keys(address).length === 0) {
+      return;
+    }
 
     form.setValues({
       firstName: address.firstName || "",
@@ -169,7 +192,9 @@ export default function CheckoutComponent() {
   useEffect(() => {
     const subtotal = cart.reduce(
       (total: number, item: any) =>
-        total + Number(item.price || 0) * Number(item.qty || 0),
+        total +
+        Number(item.price || 0) *
+          Number(item.qty || 0),
       0
     );
 
@@ -177,7 +202,7 @@ export default function CheckoutComponent() {
   }, [cart]);
 
   /* -------------------------------------------------------------------------- */
-  /* Restore cart                                                               */
+  /* Rehydrate cart                                                            */
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
@@ -185,15 +210,15 @@ export default function CheckoutComponent() {
   }, []);
 
   /* -------------------------------------------------------------------------- */
-  /* Step navigation                                                            */
+  /* Step navigation                                                           */
   /* -------------------------------------------------------------------------- */
 
   const nextStep = () => {
-    setStep((currentStep) => currentStep + 1);
+    setStep((current) => current + 1);
   };
 
   const prevStep = () => {
-    setStep((currentStep) => currentStep - 1);
+    setStep((current) => current - 1);
   };
 
   const isStepCompleted = (currentStep: number) =>
@@ -203,7 +228,7 @@ export default function CheckoutComponent() {
     step === currentStep;
 
   /* -------------------------------------------------------------------------- */
-  /* Apply coupon                                                               */
+  /* Apply coupon                                                              */
   /* -------------------------------------------------------------------------- */
 
   const applyCouponHandler = async (
@@ -223,16 +248,23 @@ export default function CheckoutComponent() {
     }
 
     try {
-      const result = (await applyCoupon(
+      const response = await applyCoupon(
         coupon.trim(),
         user._id
-      )) as CouponResult | void;
+      );
 
-      if (!result) {
+      /*
+       * applyCoupon currently has a possible void return.
+       * Check the response before accessing its properties.
+       */
+
+      if (!response) {
         setCouponError("Unable to apply coupon.");
         toast.error("Unable to apply coupon.");
         return;
       }
+
+      const result = response as CouponResult;
 
       if (!result.success) {
         const message =
@@ -257,7 +289,10 @@ export default function CheckoutComponent() {
 
       nextStep();
     } catch (error) {
-      console.error("Error applying coupon:", error);
+      console.error(
+        "Error applying coupon:",
+        error
+      );
 
       const message =
         error instanceof Error
@@ -270,20 +305,23 @@ export default function CheckoutComponent() {
   };
 
   /* -------------------------------------------------------------------------- */
-  /* Cart calculations                                                          */
+  /* Cart totals                                                               */
   /* -------------------------------------------------------------------------- */
 
   const totalSaved = cart.reduce(
     (total: number, item: any) =>
       total +
-      Number(item.saved || 0) * Number(item.qty || 0),
+      Number(item.saved || 0) *
+        Number(item.qty || 0),
     0
   );
 
-  const cartTotal = Number(subTotal + totalSaved).toFixed(0);
+  const cartTotal = Number(
+    subTotal + totalSaved
+  ).toFixed(0);
 
   /* -------------------------------------------------------------------------- */
-  /* Order button                                                               */
+  /* Order button                                                              */
   /* -------------------------------------------------------------------------- */
 
   const isDisabled =
@@ -292,7 +330,7 @@ export default function CheckoutComponent() {
     placeOrderLoading;
 
   const getButtonText = () => {
-    if (paymentMethod === "") {
+    if (!paymentMethod) {
       return "Please select the payment method";
     }
 
@@ -312,7 +350,7 @@ export default function CheckoutComponent() {
   };
 
   /* -------------------------------------------------------------------------- */
-  /* Place order                                                                */
+  /* Place order                                                               */
   /* -------------------------------------------------------------------------- */
 
   const placeOrderHandler = async () => {
@@ -322,7 +360,9 @@ export default function CheckoutComponent() {
       setPlaceOrderLoading(true);
 
       if (!paymentMethod) {
-        toast.error("Please choose a payment method.");
+        toast.error(
+          "Please choose a payment method."
+        );
         return;
       }
 
@@ -334,14 +374,41 @@ export default function CheckoutComponent() {
       }
 
       const finalTotal =
-        totalAfterDiscount !== ""
-          ? totalAfterDiscount
-          : data?.cartTotal;
+        totalAfterDiscount ||
+        data?.cartTotal;
 
-      /* ------------------------------ Stripe -------------------------------- */
+      /* ------------------------------- Stripe ------------------------------- */
 
       if (paymentMethod === "stripe") {
-        const response = await createStripeOrder(
+        const response =
+          await createStripeOrder(
+            data?.products,
+            user.address,
+            paymentMethod,
+            finalTotal,
+            data?.cartTotal,
+            coupon,
+            user._id,
+            totalSaved
+          );
+
+        if (!response?.sessionUrl) {
+          toast.error(
+            "Stripe session URL not found."
+          );
+          return;
+        }
+
+        window.location.href =
+          response.sessionUrl;
+
+        return;
+      }
+
+      /* -------------------------------- COD --------------------------------- */
+
+      const orderResponse =
+        await createOrder(
           data?.products,
           user.address,
           paymentMethod,
@@ -352,31 +419,10 @@ export default function CheckoutComponent() {
           totalSaved
         );
 
-        if (!response?.sessionUrl) {
-          toast.error("Stripe session URL not found.");
-          return;
-        }
-
-        window.location.href = response.sessionUrl;
-        return;
-      }
-
-      /* ------------------------------- COD ---------------------------------- */
-
-      const orderResponse = await createOrder(
-        data?.products,
-        user.address,
-        paymentMethod,
-        finalTotal,
-        data?.cartTotal,
-        coupon,
-        user._id,
-        totalSaved
-      );
-
       if (!orderResponse?.success) {
         toast.error(
-          orderResponse?.message || "Order creation failed."
+          orderResponse?.message ||
+            "Order creation failed."
         );
         return;
       }
@@ -387,15 +433,21 @@ export default function CheckoutComponent() {
         `/order/${orderResponse.orderId}`
       );
     } catch (error) {
-      console.error("Error placing order:", error);
-      toast.error("An error occurred. Please try again.");
+      console.error(
+        "Error placing order:",
+        error
+      );
+
+      toast.error(
+        "An error occurred. Please try again."
+      );
     } finally {
       setPlaceOrderLoading(false);
     }
   };
 
   /* -------------------------------------------------------------------------- */
-  /* Render                                                                     */
+  /* Render                                                                    */
   /* -------------------------------------------------------------------------- */
 
   return (
@@ -405,15 +457,18 @@ export default function CheckoutComponent() {
       </h1>
 
       <div className="flex flex-col gap-8 lg:flex-row">
-        {/* ================================================================== */}
-        {/* Checkout Steps                                                     */}
-        {/* ================================================================== */}
+
+        {/* ==================================================================== */}
+        {/* Checkout                                                             */}
+        {/* ==================================================================== */}
 
         <div className="w-full lg:w-2/3">
+
+          {/* Stepper */}
           <div className="relative mb-8 flex items-center justify-between">
 
             {/* Step 1 */}
-            <div className="relative flex flex-col items-center">
+            <div className="flex flex-col items-center">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
                   isActiveStep(1)
@@ -455,7 +510,7 @@ export default function CheckoutComponent() {
             />
 
             {/* Step 2 */}
-            <div className="relative flex flex-col items-center">
+            <div className="flex flex-col items-center">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
                   isActiveStep(2)
@@ -497,7 +552,7 @@ export default function CheckoutComponent() {
             />
 
             {/* Step 3 */}
-            <div className="relative flex flex-col items-center">
+            <div className="flex flex-col items-center">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
                   isActiveStep(3)
@@ -531,55 +586,64 @@ export default function CheckoutComponent() {
           </div>
 
           {/* ================================================================== */}
-          {/* Step 1 - Address                                                   */}
+          {/* Step 1: Address                                                    */}
           {/* ================================================================== */}
 
           {step === 1 && (
             <form
-              onSubmit={form.onSubmit(async (values) => {
-                if (!user?._id) {
-                  toast.error("User information is not available.");
-                  return;
+              onSubmit={form.onSubmit(
+                async (values) => {
+                  if (!user?._id) {
+                    toast.error(
+                      "User information is not available."
+                    );
+                    return;
+                  }
+
+                  try {
+                    const result =
+                      await saveAddress(
+                        {
+                          ...values,
+                          active: true,
+                        },
+                        user._id
+                      );
+
+                    setAddress(
+                      result?.addresses
+                    );
+
+                    toast.success(
+                      "Successfully added address"
+                    );
+
+                    router.refresh();
+                    nextStep();
+                  } catch (error) {
+                    console.error(
+                      "Error saving address:",
+                      error
+                    );
+
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Unable to save address."
+                    );
+                  }
                 }
-
-                try {
-                  const result = await saveAddress(
-                    {
-                      ...values,
-                      active: true,
-                    },
-                    user._id
-                  );
-
-                  setAddress(result?.addresses);
-
-                  toast.success(
-                    "Successfully added address"
-                  );
-
-                  router.refresh();
-                  nextStep();
-                } catch (error) {
-                  console.error(
-                    "Error saving address:",
-                    error
-                  );
-
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Unable to save address."
-                  );
-                }
-              })}
+              )}
               className="space-y-4"
             >
-              <DeliveryAddressForm form={form} />
+              <DeliveryAddressForm
+                form={form}
+              />
             </form>
           )}
 
           {/* ================================================================== */}
-          {/* Step 2 - Coupon                                                    */}
+          {/* Step 2: Coupon                                                     */}
           {/* ================================================================== */}
 
           {step === 2 && (
@@ -595,7 +659,7 @@ export default function CheckoutComponent() {
           )}
 
           {/* ================================================================== */}
-          {/* Step 3 - Payment                                                   */}
+          {/* Step 3: Payment                                                    */}
           {/* ================================================================== */}
 
           {step === 3 && (
@@ -611,13 +675,16 @@ export default function CheckoutComponent() {
 
               <RadioGroup
                 value={paymentMethod}
-                onValueChange={setPaymentMethod}
+                onValueChange={
+                  setPaymentMethod
+                }
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem
                     value="cod"
                     id="cod"
                   />
+
                   <Label htmlFor="cod">
                     Cash on Delivery (COD)
                   </Label>
@@ -628,6 +695,7 @@ export default function CheckoutComponent() {
                     value="stripe"
                     id="stripe"
                   />
+
                   <Label htmlFor="stripe">
                     Stripe
                   </Label>
@@ -636,10 +704,7 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ================================================================== */}
-          {/* Navigation Buttons                                                 */}
-          {/* ================================================================== */}
-
+          {/* Navigation */}
           <div className="mt-6 flex justify-between">
             {step > 1 && (
               <Button
@@ -669,16 +734,18 @@ export default function CheckoutComponent() {
 
         <div className="w-full self-start bg-gray-100 lg:sticky lg:top-[1rem] lg:w-1/3">
           <div className="p-6">
+
             <h2 className="mb-4 text-xl font-semibold">
               Order Summary
             </h2>
 
+            {/* Products */}
             <div className="space-y-4">
               {data?.products?.map(
                 (item: any, index: number) => (
                   <div
-                    className="flex items-center space-x-4"
                     key={index}
+                    className="flex items-center space-x-4"
                   >
                     <img
                       src={item.image}
@@ -700,8 +767,10 @@ export default function CheckoutComponent() {
                       </p>
 
                       <p className="text-sm font-semibold">
-                        ₹ {item.price} × {item.qty} = ₹
-                        {item.price * item.qty}
+                        ₹ {item.price} ×{" "}
+                        {item.qty} = ₹
+                        {item.price *
+                          item.qty}
                       </p>
                     </div>
                   </div>
@@ -709,27 +778,40 @@ export default function CheckoutComponent() {
               )}
             </div>
 
-            {/* Summary */}
+            {/* Totals */}
             <div className="mt-6 space-y-2">
+
               <div className="flex justify-between">
                 <span>
-                  Subtotal ({data?.products?.length || 0}{" "}
+                  Subtotal (
+                  {data?.products?.length ||
+                    0}{" "}
                   {data?.products?.length === 1
                     ? "Item"
                     : "Items"}
                   ):
                 </span>
 
-                <strong>₹ {cartTotal}</strong>
+                <strong>
+                  ₹ {cartTotal}
+                </strong>
               </div>
 
               <div className="flex justify-between text-green-600">
-                <span>Cart Discount:</span>
-                <strong>- ₹ {totalSaved}</strong>
+                <span>
+                  Cart Discount:
+                </span>
+
+                <strong>
+                  - ₹ {totalSaved}
+                </strong>
               </div>
 
               <div className="flex justify-between text-green-600">
-                <span>Shipping Charges:</span>
+                <span>
+                  Shipping Charges:
+                </span>
+
                 <span>Free</span>
               </div>
 
@@ -746,24 +828,36 @@ export default function CheckoutComponent() {
                     : "Total before:"}
                 </span>
 
-                <span>₹ {data?.cartTotal}</span>
+                <span>
+                  ₹ {data?.cartTotal}
+                </span>
               </div>
 
+              {/* Coupon */}
               {discount > 0 && (
                 <div className="flex justify-between border border-[#cccccc17] bg-green-700 p-[5px] text-[14px] text-white">
-                  <span>Coupon applied:</span>
-                  <strong>{discount}%</strong>
+                  <span>
+                    Coupon applied:
+                  </span>
+
+                  <strong>
+                    {discount}%
+                  </strong>
                 </div>
               )}
 
+              {/* Discounted total */}
               {totalAfterDiscount !== "" &&
                 Number(totalAfterDiscount) <
                   Number(data?.cartTotal) && (
                   <div className="flex justify-between border border-[#cccccc17] p-[5px] text-lg">
-                    <span>Total after Discount:</span>
+                    <span>
+                      Total after Discount:
+                    </span>
 
                     <strong className="text-[15px]">
-                      ₹ {totalAfterDiscount}
+                      ₹{" "}
+                      {totalAfterDiscount}
                     </strong>
                   </div>
                 )}
