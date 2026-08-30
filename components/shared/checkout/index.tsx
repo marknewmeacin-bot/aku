@@ -38,13 +38,6 @@ import { useCartStore } from "@/store/cart";
 import DeliveryAddressForm from "./delivery.address.form";
 import ApplyCouponForm from "./apply.coupon.form";
 
-type CouponResult = {
-  success: boolean;
-  message: string;
-  totalAfterDiscount?: string;
-  discount?: number;
-};
-
 export default function CheckoutComponent() {
   const router = useRouter();
   const { userId } = useAuth();
@@ -71,11 +64,12 @@ export default function CheckoutComponent() {
   const [discount, setDiscount] = useState(0);
 
   const [subTotal, setSubtotal] = useState(0);
+
   const [placeOrderLoading, setPlaceOrderLoading] =
     useState(false);
 
   /* -------------------------------------------------------------------------- */
-  /* Form                                                                       */
+  /* Checkout Form                                                              */
   /* -------------------------------------------------------------------------- */
 
   const form = useForm({
@@ -135,7 +129,7 @@ export default function CheckoutComponent() {
   });
 
   /* -------------------------------------------------------------------------- */
-  /* Load checkout data                                                         */
+  /* Load Checkout Data                                                         */
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
@@ -143,7 +137,8 @@ export default function CheckoutComponent() {
 
     const loadCheckoutData = async () => {
       try {
-        const result = await getSavedCartForUser(userId);
+        const result =
+          await getSavedCartForUser(userId);
 
         setData(result?.cart ?? {});
         setUser(result?.user ?? null);
@@ -164,11 +159,14 @@ export default function CheckoutComponent() {
   }, [userId]);
 
   /* -------------------------------------------------------------------------- */
-  /* Load saved address                                                        */
+  /* Load Saved Address                                                         */
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
-    if (!address || Object.keys(address).length === 0) {
+    if (
+      !address ||
+      Object.keys(address).length === 0
+    ) {
       return;
     }
 
@@ -186,7 +184,7 @@ export default function CheckoutComponent() {
   }, [address]);
 
   /* -------------------------------------------------------------------------- */
-  /* Calculate subtotal                                                        */
+  /* Calculate Subtotal                                                         */
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
@@ -198,11 +196,13 @@ export default function CheckoutComponent() {
       0
     );
 
-    setSubtotal(Number(subtotal.toFixed(2)));
+    setSubtotal(
+      Number(subtotal.toFixed(2))
+    );
   }, [cart]);
 
   /* -------------------------------------------------------------------------- */
-  /* Rehydrate cart                                                            */
+  /* Rehydrate Cart                                                             */
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
@@ -210,7 +210,7 @@ export default function CheckoutComponent() {
   }, []);
 
   /* -------------------------------------------------------------------------- */
-  /* Step navigation                                                           */
+  /* Step Navigation                                                             */
   /* -------------------------------------------------------------------------- */
 
   const nextStep = () => {
@@ -221,14 +221,16 @@ export default function CheckoutComponent() {
     setStep((current) => current - 1);
   };
 
-  const isStepCompleted = (currentStep: number) =>
-    step > currentStep;
+  const isStepCompleted = (
+    currentStep: number
+  ) => step > currentStep;
 
-  const isActiveStep = (currentStep: number) =>
-    step === currentStep;
+  const isActiveStep = (
+    currentStep: number
+  ) => step === currentStep;
 
   /* -------------------------------------------------------------------------- */
-  /* Apply coupon                                                              */
+  /* Apply Coupon                                                               */
   /* -------------------------------------------------------------------------- */
 
   const applyCouponHandler = async (
@@ -237,54 +239,49 @@ export default function CheckoutComponent() {
     event.preventDefault();
 
     if (!user?._id) {
-      toast.error("User information is not available.");
+      toast.error(
+        "User information is not available."
+      );
       return;
     }
 
-    if (!coupon.trim()) {
-      setCouponError("Please enter a coupon code.");
-      toast.error("Please enter a coupon code.");
+    const couponCode = coupon.trim();
+
+    if (!couponCode) {
+      setCouponError(
+        "Please enter a coupon code."
+      );
+
+      toast.error(
+        "Please enter a coupon code."
+      );
+
       return;
     }
 
     try {
-      const response = await applyCoupon(
-        coupon.trim(),
+      const result = await applyCoupon(
+        couponCode,
         user._id
       );
 
-      /*
-       * applyCoupon currently has a possible void return.
-       * Check the response before accessing its properties.
-       */
-
-      if (!response) {
-        setCouponError("Unable to apply coupon.");
-        toast.error("Unable to apply coupon.");
-        return;
-      }
-
-      const result = response as CouponResult;
-
       if (!result.success) {
-        const message =
-          result.message || "No Coupon Found";
-
-        setCouponError(message);
-        toast.error(message);
+        setCouponError(result.message);
+        toast.error(result.message);
         return;
       }
 
-      const appliedDiscount = result.discount ?? 0;
-      const discountedTotal =
-        result.totalAfterDiscount ?? "";
+      setTotalAfterDiscount(
+        result.totalAfterDiscount ?? ""
+      );
 
-      setTotalAfterDiscount(discountedTotal);
-      setDiscount(appliedDiscount);
+      setDiscount(result.discount ?? 0);
       setCouponError("");
 
       toast.success(
-        `Applied ${appliedDiscount}% discount successfully.`
+        `Applied ${
+          result.discount ?? 0
+        }% discount successfully.`
       );
 
       nextStep();
@@ -305,7 +302,7 @@ export default function CheckoutComponent() {
   };
 
   /* -------------------------------------------------------------------------- */
-  /* Cart totals                                                               */
+  /* Cart Totals                                                                 */
   /* -------------------------------------------------------------------------- */
 
   const totalSaved = cart.reduce(
@@ -321,11 +318,11 @@ export default function CheckoutComponent() {
   ).toFixed(0);
 
   /* -------------------------------------------------------------------------- */
-  /* Order button                                                              */
+  /* Place Order Button                                                          */
   /* -------------------------------------------------------------------------- */
 
   const isDisabled =
-    paymentMethod === "" ||
+    !paymentMethod ||
     !user?.address?.firstName ||
     placeOrderLoading;
 
@@ -350,7 +347,7 @@ export default function CheckoutComponent() {
   };
 
   /* -------------------------------------------------------------------------- */
-  /* Place order                                                               */
+  /* Place Order                                                                 */
   /* -------------------------------------------------------------------------- */
 
   const placeOrderHandler = async () => {
@@ -377,7 +374,7 @@ export default function CheckoutComponent() {
         totalAfterDiscount ||
         data?.cartTotal;
 
-      /* ------------------------------- Stripe ------------------------------- */
+      /* -------------------------------- Stripe -------------------------------- */
 
       if (paymentMethod === "stripe") {
         const response =
@@ -405,7 +402,7 @@ export default function CheckoutComponent() {
         return;
       }
 
-      /* -------------------------------- COD --------------------------------- */
+      /* ---------------------------------- COD --------------------------------- */
 
       const orderResponse =
         await createOrder(
@@ -447,7 +444,7 @@ export default function CheckoutComponent() {
   };
 
   /* -------------------------------------------------------------------------- */
-  /* Render                                                                    */
+  /* Render                                                                     */
   /* -------------------------------------------------------------------------- */
 
   return (
@@ -458,16 +455,18 @@ export default function CheckoutComponent() {
 
       <div className="flex flex-col gap-8 lg:flex-row">
 
-        {/* ==================================================================== */}
-        {/* Checkout                                                             */}
-        {/* ==================================================================== */}
+        {/* -------------------------------------------------------------------- */}
+        {/* Checkout Section                                                     */}
+        {/* -------------------------------------------------------------------- */}
 
         <div className="w-full lg:w-2/3">
 
           {/* Stepper */}
+
           <div className="relative mb-8 flex items-center justify-between">
 
             {/* Step 1 */}
+
             <div className="flex flex-col items-center">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
@@ -500,7 +499,8 @@ export default function CheckoutComponent() {
               </span>
             </div>
 
-            {/* Line */}
+            {/* Step 1 → Step 2 */}
+
             <div
               className={`mx-4 flex-1 border-t-2 ${
                 step >= 2
@@ -510,6 +510,7 @@ export default function CheckoutComponent() {
             />
 
             {/* Step 2 */}
+
             <div className="flex flex-col items-center">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
@@ -542,7 +543,8 @@ export default function CheckoutComponent() {
               </span>
             </div>
 
-            {/* Line */}
+            {/* Step 2 → Step 3 */}
+
             <div
               className={`mx-4 flex-1 border-t-2 ${
                 step >= 3
@@ -552,6 +554,7 @@ export default function CheckoutComponent() {
             />
 
             {/* Step 3 */}
+
             <div className="flex flex-col items-center">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
@@ -585,9 +588,9 @@ export default function CheckoutComponent() {
             </div>
           </div>
 
-          {/* ================================================================== */}
-          {/* Step 1: Address                                                    */}
-          {/* ================================================================== */}
+          {/* ------------------------------------------------------------------ */}
+          {/* Step 1 - Delivery Address                                          */}
+          {/* ------------------------------------------------------------------ */}
 
           {step === 1 && (
             <form
@@ -610,15 +613,30 @@ export default function CheckoutComponent() {
                         user._id
                       );
 
+                    if (!result?.success) {
+                      toast.error(
+                        result?.message ||
+                          "Unable to save address."
+                      );
+                      return;
+                    }
+
                     setAddress(
-                      result?.addresses
+                      result.address
                     );
+
+                    setUser((current: any) => ({
+                      ...current,
+                      address: {
+                        ...values,
+                        active: true,
+                      },
+                    }));
 
                     toast.success(
-                      "Successfully added address"
+                      "Successfully added address."
                     );
 
-                    router.refresh();
                     nextStep();
                   } catch (error) {
                     console.error(
@@ -642,9 +660,9 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ================================================================== */}
-          {/* Step 2: Coupon                                                     */}
-          {/* ================================================================== */}
+          {/* ------------------------------------------------------------------ */}
+          {/* Step 2 - Coupon                                                    */}
+          {/* ------------------------------------------------------------------ */}
 
           {step === 2 && (
             <form
@@ -658,9 +676,9 @@ export default function CheckoutComponent() {
             </form>
           )}
 
-          {/* ================================================================== */}
-          {/* Step 3: Payment                                                    */}
-          {/* ================================================================== */}
+          {/* ------------------------------------------------------------------ */}
+          {/* Step 3 - Payment                                                   */}
+          {/* ------------------------------------------------------------------ */}
 
           {step === 3 && (
             <form
@@ -705,6 +723,7 @@ export default function CheckoutComponent() {
           )}
 
           {/* Navigation */}
+
           <div className="mt-6 flex justify-between">
             {step > 1 && (
               <Button
@@ -728,9 +747,9 @@ export default function CheckoutComponent() {
           </div>
         </div>
 
-        {/* ==================================================================== */}
+        {/* -------------------------------------------------------------------- */}
         {/* Order Summary                                                        */}
-        {/* ==================================================================== */}
+        {/* -------------------------------------------------------------------- */}
 
         <div className="w-full self-start bg-gray-100 lg:sticky lg:top-[1rem] lg:w-1/3">
           <div className="p-6">
@@ -740,9 +759,13 @@ export default function CheckoutComponent() {
             </h2>
 
             {/* Products */}
+
             <div className="space-y-4">
               {data?.products?.map(
-                (item: any, index: number) => (
+                (
+                  item: any,
+                  index: number
+                ) => (
                   <div
                     key={index}
                     className="flex items-center space-x-4"
@@ -769,8 +792,8 @@ export default function CheckoutComponent() {
                       <p className="text-sm font-semibold">
                         ₹ {item.price} ×{" "}
                         {item.qty} = ₹
-                        {item.price *
-                          item.qty}
+                        {Number(item.price) *
+                          Number(item.qty)}
                       </p>
                     </div>
                   </div>
@@ -779,6 +802,7 @@ export default function CheckoutComponent() {
             </div>
 
             {/* Totals */}
+
             <div className="mt-6 space-y-2">
 
               <div className="flex justify-between">
@@ -834,6 +858,7 @@ export default function CheckoutComponent() {
               </div>
 
               {/* Coupon */}
+
               {discount > 0 && (
                 <div className="flex justify-between border border-[#cccccc17] bg-green-700 p-[5px] text-[14px] text-white">
                   <span>
@@ -846,8 +871,9 @@ export default function CheckoutComponent() {
                 </div>
               )}
 
-              {/* Discounted total */}
-              {totalAfterDiscount !== "" &&
+              {/* Discounted Total */}
+
+              {totalAfterDiscount &&
                 Number(totalAfterDiscount) <
                   Number(data?.cartTotal) && (
                   <div className="flex justify-between border border-[#cccccc17] p-[5px] text-lg">
@@ -864,6 +890,7 @@ export default function CheckoutComponent() {
             </div>
 
             {/* Place Order */}
+
             <Button
               type="button"
               onClick={placeOrderHandler}
