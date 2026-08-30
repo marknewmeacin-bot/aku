@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -11,139 +12,232 @@ import { handleError } from "@/lib/utils";
 
 type UserData = Record<string, unknown>;
 
-// Create user
-export async function createUser(user: UserData) {
+type UserResponse = {
+  success: boolean;
+  message: string;
+  user?: any;
+};
+
+type AddressResponse = {
+  success: boolean;
+  message?: string;
+  address?: any;
+  addresses?: any[];
+};
+
+type CouponResponse = {
+  success: boolean;
+  message: string;
+  totalAfterDiscount?: string;
+  discount?: number;
+};
+
+type OrdersResponse = {
+  success: boolean;
+  message?: string;
+  orders?: any[];
+};
+
+/* -------------------------------------------------------------------------- */
+/* Create user                                                                */
+/* -------------------------------------------------------------------------- */
+
+export async function createUser(
+  user: UserData
+) {
   try {
     await connectToDatabase();
 
     const newUser = await User.create(user);
 
-    return JSON.parse(JSON.stringify(newUser));
+    return JSON.parse(
+      JSON.stringify(newUser)
+    );
   } catch (error) {
     handleError(error);
+
+    return null;
   }
 }
 
-// Get user by Clerk ID
-export async function getUserById(clerkId: string) {
+/* -------------------------------------------------------------------------- */
+/* Get user by Clerk ID                                                       */
+/* -------------------------------------------------------------------------- */
+
+export async function getUserById(
+  clerkId: string
+): Promise<UserResponse> {
   try {
     await connectToDatabase();
 
-    const user = await User.findOne({ clerkId });
+    const user = await User.findOne({
+      clerkId,
+    });
 
     if (!user) {
       return {
         success: false,
-        message: "User not found with this ID!",
+        message:
+          "User not found with this ID!",
         user: null,
       };
     }
 
     return {
       success: true,
-      message: "Successfully fetched User data.",
-      user: JSON.parse(JSON.stringify(user)),
+      message:
+        "Successfully fetched User data.",
+      user: JSON.parse(
+        JSON.stringify(user)
+      ),
     };
   } catch (error) {
     handleError(error);
+
+    return {
+      success: false,
+      message: "Failed to fetch user.",
+      user: null,
+    };
   }
 }
 
-// Update user
+/* -------------------------------------------------------------------------- */
+/* Update user                                                                */
+/* -------------------------------------------------------------------------- */
+
 export async function updateUser(
   clerkId: string,
   userData: UserData
-) {
+): Promise<UserResponse> {
   try {
     await connectToDatabase();
 
-    const updatedUser = await User.findOneAndUpdate(
-      { clerkId },
-      userData,
-      { new: true }
-    );
+    const updatedUser =
+      await User.findOneAndUpdate(
+        { clerkId },
+        userData,
+        { new: true }
+      );
 
     if (!updatedUser) {
       return {
         success: false,
-        message: "User not found with this ID!",
-        user: null,
-      };
-    }
-
-    return JSON.parse(JSON.stringify(updatedUser));
-  } catch (error) {
-    handleError(error);
-  }
-}
-
-// Delete user
-export async function deleteUser(clerkId: string) {
-  try {
-    await connectToDatabase();
-
-    const userToDelete = await User.findOne({ clerkId });
-
-    if (!userToDelete) {
-      return {
-        success: false,
-        message: "User not found with this ID!",
-        user: null,
-      };
-    }
-
-    const deletedUser = await User.findByIdAndDelete(
-      userToDelete._id
-    );
-
-    revalidatePath("/");
-
-    if (!deletedUser) {
-      return {
-        success: false,
-        message: "Something went wrong",
+        message:
+          "User not found with this ID!",
         user: null,
       };
     }
 
     return {
       success: true,
-      message: "Successfully deleted User",
-      user: JSON.parse(JSON.stringify(deletedUser)),
+      message:
+        "User updated successfully.",
+      user: JSON.parse(
+        JSON.stringify(updatedUser)
+      ),
     };
   } catch (error) {
     handleError(error);
+
+    return {
+      success: false,
+      message: "Failed to update user.",
+      user: null,
+    };
   }
 }
 
-// Change active address
-export async function changeActiveAddress(
-  id: string,
-  userId: string
-) {
+/* -------------------------------------------------------------------------- */
+/* Delete user                                                                */
+/* -------------------------------------------------------------------------- */
+
+export async function deleteUser(
+  clerkId: string
+): Promise<UserResponse> {
   try {
     await connectToDatabase();
 
-    const user = await User.findById(userId);
+    const userToDelete =
+      await User.findOne({ clerkId });
+
+    if (!userToDelete) {
+      return {
+        success: false,
+        message:
+          "User not found with this ID!",
+        user: null,
+      };
+    }
+
+    const deletedUser =
+      await User.findByIdAndDelete(
+        userToDelete._id
+      );
+
+    if (!deletedUser) {
+      return {
+        success: false,
+        message: "Something went wrong.",
+        user: null,
+      };
+    }
+
+    revalidatePath("/");
+
+    return {
+      success: true,
+      message:
+        "Successfully deleted User.",
+      user: JSON.parse(
+        JSON.stringify(deletedUser)
+      ),
+    };
+  } catch (error) {
+    handleError(error);
+
+    return {
+      success: false,
+      message: "Failed to delete user.",
+      user: null,
+    };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Change active address                                                     */
+/* -------------------------------------------------------------------------- */
+
+export async function changeActiveAddress(
+  id: string,
+  userId: string
+): Promise<AddressResponse> {
+  try {
+    await connectToDatabase();
+
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return {
         success: false,
-        message: "User not found",
+        message: "User not found.",
         addresses: [],
       };
     }
 
-    const addresses = (user.address ?? []).map(
-      (address: any) => {
-        const addressData = address.toObject();
+    const addresses = (
+      user.address ?? []
+    ).map((address: any) => {
+      const addressData =
+        address.toObject();
 
-        return {
-          ...addressData,
-          active: address._id.toString() === id,
-        };
-      }
-    );
+      return {
+        ...addressData,
+        active:
+          address._id.toString() === id,
+      };
+    });
 
     user.address = addresses;
 
@@ -151,33 +245,49 @@ export async function changeActiveAddress(
 
     return {
       success: true,
-      addresses: JSON.parse(JSON.stringify(addresses)),
+      addresses: JSON.parse(
+        JSON.stringify(addresses)
+      ),
     };
   } catch (error) {
     handleError(error);
+
+    return {
+      success: false,
+      message:
+        "Failed to update active address.",
+      addresses: [],
+    };
   }
 }
 
-// Delete address
+/* -------------------------------------------------------------------------- */
+/* Delete address                                                             */
+/* -------------------------------------------------------------------------- */
+
 export async function deleteAddress(
   id: string,
   userId: string
-) {
+): Promise<AddressResponse> {
   try {
     await connectToDatabase();
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return {
         success: false,
-        message: "User not found",
+        message: "User not found.",
         addresses: [],
       };
     }
 
-    user.address = (user.address ?? []).filter(
-      (address: any) => address._id.toString() !== id
+    user.address = (
+      user.address ?? []
+    ).filter(
+      (address: any) =>
+        address._id.toString() !== id
     );
 
     await user.save();
@@ -190,23 +300,34 @@ export async function deleteAddress(
     };
   } catch (error) {
     handleError(error);
+
+    return {
+      success: false,
+      message:
+        "Failed to delete address.",
+      addresses: [],
+    };
   }
 }
 
-// Save address
+/* -------------------------------------------------------------------------- */
+/* Save address                                                               */
+/* -------------------------------------------------------------------------- */
+
 export async function saveAddress(
   address: Record<string, unknown>,
   userId: string
-) {
+): Promise<AddressResponse> {
   try {
     await connectToDatabase();
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return {
         success: false,
-        message: "User not found",
+        message: "User not found.",
         addresses: [],
       };
     }
@@ -217,104 +338,160 @@ export async function saveAddress(
 
     return {
       success: true,
-      address: JSON.parse(JSON.stringify(user.address)),
+      address: JSON.parse(
+        JSON.stringify(user.address)
+      ),
     };
   } catch (error) {
     handleError(error);
+
+    return {
+      success: false,
+      message:
+        "Failed to save address.",
+    };
   }
 }
 
-// Apply coupon
+/* -------------------------------------------------------------------------- */
+/* Apply coupon                                                               */
+/* -------------------------------------------------------------------------- */
+
 export async function applyCoupon(
   coupon: string,
   userId: string
-) {
+): Promise<CouponResponse> {
   try {
     await connectToDatabase();
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return {
         success: false,
-        message: "User not found",
+        message: "User not found.",
       };
     }
 
-    const checkCoupon = await Coupon.findOne({ coupon });
+    const couponCode = coupon.trim();
+
+    if (!couponCode) {
+      return {
+        success: false,
+        message:
+          "Please enter a coupon code.",
+      };
+    }
+
+    const checkCoupon =
+      await Coupon.findOne({
+        coupon: couponCode,
+      });
 
     if (!checkCoupon) {
       return {
         success: false,
-        message: "Invalid Coupon",
+        message: "Invalid Coupon.",
       };
     }
 
-    const cart = await Cart.findOne({ user: userId });
+    const cart =
+      await Cart.findOne({
+        user: userId,
+      });
 
     if (!cart) {
       return {
         success: false,
-        message: "Cart not found",
+        message: "Cart not found.",
       };
     }
 
+    const discount =
+      Number(checkCoupon.discount) || 0;
+
+    const cartTotal =
+      Number(cart.cartTotal) || 0;
+
     const totalAfterDiscount =
-      cart.cartTotal -
-      (cart.cartTotal * checkCoupon.discount) / 100;
+      cartTotal -
+      (cartTotal * discount) / 100;
 
     await Cart.findOneAndUpdate(
       { user: userId },
-      { totalAfterDiscount },
-      { new: true }
+      {
+        totalAfterDiscount,
+      },
+      {
+        new: true,
+      }
     );
 
     return {
       success: true,
-      message: "Successfully applied Coupon",
-      totalAfterDiscount: totalAfterDiscount.toFixed(2),
-      discount: checkCoupon.discount,
+      message:
+        "Successfully applied Coupon.",
+      totalAfterDiscount:
+        totalAfterDiscount.toFixed(2),
+      discount,
     };
   } catch (error) {
     handleError(error);
+
+    return {
+      success: false,
+      message:
+        "Failed to apply coupon.",
+    };
   }
 }
 
-// Get all orders for user profile
+/* -------------------------------------------------------------------------- */
+/* Get all orders for user profile                                            */
+/* -------------------------------------------------------------------------- */
+
 export async function getAllUserOrdersProfile(
   clerkId: string
-) {
+): Promise<OrdersResponse> {
   try {
     await connectToDatabase();
 
-    const user = await User.findOne({ clerkId });
+    const user =
+      await User.findOne({
+        clerkId,
+      });
 
     if (!user) {
       return {
         success: false,
-        message: "User not found",
+        message: "User not found.",
         orders: [],
       };
     }
 
-    const orders = await Order.find({
-      user: user._id,
-    })
-      .sort({ createdAt: -1 })
-      .lean();
+    const orders =
+      await Order.find({
+        user: user._id,
+      })
+        .sort({ createdAt: -1 })
+        .lean();
 
-    const filteredOrders = orders.map((order) => ({
-      id: order._id,
-      date: new Date(order.createdAt).toLocaleDateString(
-        "en-US",
-        {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }
-      ),
-      total: order.total,
-    }));
+    const filteredOrders =
+      orders.map((order) => ({
+        id: order._id,
+        date: new Date(
+          order.createdAt
+        ).toLocaleDateString(
+          "en-US",
+          {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }
+        ),
+        total: order.total,
+      }));
 
     return {
       success: true,
@@ -324,5 +501,13 @@ export async function getAllUserOrdersProfile(
     };
   } catch (error) {
     handleError(error);
+
+    return {
+      success: false,
+      message:
+        "Failed to fetch orders.",
+      orders: [],
+    };
   }
 }
+
